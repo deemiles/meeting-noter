@@ -6,11 +6,7 @@ A menu bar app for macOS 26 that records your calls, transcribes them locally, a
 
 Built with SwiftUI and the Liquid Glass design system. No Xcode project — just Swift Package Manager, Sparkle for updates, and ~2,000 lines of Swift.
 
-<p align="center">
-  <img src="docs/img/menu.png" width="330" alt="Meeting Noter menu bar popover">
-  &nbsp;&nbsp;
-  <img src="docs/img/transcript.png" width="430" alt="Transcript window with an AI summary">
-</p>
+> **[See it in action →](https://deemiles.github.io/meeting-noter/)** — the site plays the whole pipeline: recording two tracks, transcribing on device, summarizing, and copying the notes as a chat message.
 
 ## Why
 

@@ -52,14 +52,14 @@ nav .spacer{flex:1}
 .navlink:hover{color:var(--ink)}
 
 /* ---------- hero ---------- */
-header{padding:96px 0 72px;text-align:center}
+header{padding:60px 0 64px;text-align:center}
 h1{
-  font:700 clamp(42px,7vw,76px)/1.03 -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif;
+  font:700 clamp(38px,5.6vw,64px)/1.04 -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,sans-serif;
   letter-spacing:-.035em;margin-bottom:22px;
   background:linear-gradient(175deg,#fff 20%,#b9b2ff 78%);
   -webkit-background-clip:text;background-clip:text;color:transparent;
 }
-.lede{font-size:clamp(17px,2.2vw,21px);color:var(--muted);max-width:620px;margin:0 auto 38px}
+.lede{font-size:clamp(16.5px,2vw,19.5px);color:var(--muted);max-width:600px;margin:0 auto 32px}
 .lede b{color:var(--ink);font-weight:560}
 
 .cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:14px}
@@ -76,36 +76,96 @@ h1{
 .btn-primary:hover{transform:translateY(-2px);box-shadow:0 16px 44px -12px rgba(109,94,246,1),0 1px 0 rgba(255,255,255,.35) inset}
 .btn-ghost{background:var(--glass);border-color:var(--stroke);color:var(--ink);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .btn-ghost:hover{transform:translateY(-2px);background:rgba(255,255,255,.1)}
-.subcta{font-size:13.5px;color:var(--dim)}
+.subcta{font-size:13.5px;color:var(--dim);line-height:1.9}
 .subcta code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--muted)}
 
-/* ---------- hero waveform ---------- */
-.wavewrap{display:flex;align-items:center;justify-content:center;gap:5px;height:74px;margin:46px 0 8px}
-.wavewrap i{display:block;width:5px;border-radius:99px;background:linear-gradient(180deg,var(--violet),var(--indigo));animation:eq 1.5s ease-in-out infinite;opacity:.92}
-@keyframes eq{0%,100%{height:9px}50%{height:var(--h)}}
+/* ---------- hero stage ---------- */
+.stage{margin:34px auto 0;max-width:640px;padding:0;overflow:hidden;text-align:left}
+.stagebar{display:flex;align-items:center;gap:7px;padding:13px 16px;border-bottom:1px solid var(--stroke);background:rgba(255,255,255,.03)}
+.dot{width:11px;height:11px;border-radius:50%;flex:none}
+.dot.red{background:#ff5f57}.dot.amber{background:#febc2e}.dot.green{background:#28c840}
+.stagetitle{margin-left:8px;font-size:13px;color:var(--muted);transition:opacity .3s}
+.stagestep{margin-left:auto;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums}
 
-/* ---------- demo: two tracks -> transcript ---------- */
-.demo{padding:26px;margin:26px 0 0;text-align:left}
-.demo h3{font-size:14px;font-weight:560;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px}
-.track{display:flex;align-items:center;gap:14px;margin-bottom:12px}
-.track .tag{width:46px;flex:none;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim);text-align:right}
-.bars{flex:1;display:flex;align-items:center;gap:3px;height:34px}
-.bars i{flex:1;border-radius:99px;background:rgba(255,255,255,.15);animation:pulse 2.4s ease-in-out infinite}
-.track.sys .bars i{background:linear-gradient(180deg,var(--violet),rgba(168,85,247,.35))}
-.track.mic .bars i{background:linear-gradient(180deg,var(--green),rgba(52,211,153,.3))}
-@keyframes pulse{0%,100%{height:4px;opacity:.45}50%{height:var(--h);opacity:1}}
-.arrow{display:flex;align-items:center;justify-content:center;gap:9px;color:var(--dim);font-size:13px;margin:18px 0;letter-spacing:.02em}
-.arrow .line{height:1px;flex:1;background:linear-gradient(90deg,transparent,var(--stroke),transparent)}
-.lines{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13.5px;line-height:2.05}
-.lines div{opacity:0;animation:reveal .5s ease forwards}
-.lines div:nth-child(1){animation-delay:.4s}
-.lines div:nth-child(2){animation-delay:1.5s}
-.lines div:nth-child(3){animation-delay:2.6s}
-.lines div:nth-child(4){animation-delay:3.7s}
-@keyframes reveal{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.panes{position:relative;height:264px}
+.pane{position:absolute;inset:0;padding:22px;opacity:0;visibility:hidden;transform:translateY(10px);
+  transition:opacity .45s ease,transform .45s cubic-bezier(.2,.9,.3,1.2),visibility 0s linear .45s;
+  pointer-events:none}
+.pane.on{opacity:1;visibility:visible;transform:none;pointer-events:auto;
+  transition:opacity .45s ease,transform .45s cubic-bezier(.2,.9,.3,1.2),visibility 0s}
+
+/* 1 — recording */
+.pane[data-pane="0"]{display:flex;gap:22px;align-items:center}
+.reccol{display:flex;flex-direction:column;align-items:center;gap:10px;flex:none}
+.recbtn{width:66px;height:66px;border-radius:50%;display:grid;place-items:center;
+  background:linear-gradient(180deg,#ff4d5e,#e03246);box-shadow:0 0 0 0 rgba(255,77,94,.55)}
+.pane.on .recbtn{animation:ring 1.9s ease-out infinite}
+.recbtn span{width:20px;height:20px;border-radius:4px;background:#fff}
+@keyframes ring{0%{box-shadow:0 0 0 0 rgba(255,77,94,.5)}70%{box-shadow:0 0 0 20px rgba(255,77,94,0)}100%{box-shadow:0 0 0 0 rgba(255,77,94,0)}}
+.rectime{font:600 19px/1 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--red);font-variant-numeric:tabular-nums}
+.tracks{flex:1;min-width:0}
+.trk{display:flex;align-items:center;gap:12px;margin-bottom:11px}
+.trk .lbl{width:48px;flex:none;font-size:11.5px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--dim);text-align:right}
+.trk .bars{flex:1;display:flex;align-items:center;gap:3px;height:36px}
+.trk .bars i{flex:1;border-radius:99px;height:4px}
+.pane.on .trk .bars i{animation:talk 2.6s ease-in-out infinite}
+.trk.sys .bars i{background:linear-gradient(180deg,var(--violet),rgba(168,85,247,.4))}
+.trk.mic .bars i{background:linear-gradient(180deg,var(--green),rgba(52,211,153,.35))}
+@keyframes talk{0%,100%{height:4px;opacity:.4}50%{height:var(--h);opacity:1}}
+.note{margin-top:6px;font-size:12.5px;color:var(--dim)}
+
+/* 2 — transcript */
+.panehead{font-size:13px;color:var(--muted);margin-bottom:14px}
+.chip{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;
+  background:rgba(109,94,246,.22);border:1px solid rgba(109,94,246,.4);color:#c9c2ff;margin-right:4px}
+.chip.violet{background:rgba(168,85,247,.2);border-color:rgba(168,85,247,.42);color:#e5cbff}
+.lines2{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;line-height:1.95}
+.lines2 div{opacity:0}
+.pane.on .lines2 div{animation:pop .45s ease forwards}
+.pane.on .lines2 div:nth-child(1){animation-delay:.25s}
+.pane.on .lines2 div:nth-child(2){animation-delay:.85s}
+.pane.on .lines2 div:nth-child(3){animation-delay:1.45s}
+.pane.on .lines2 div:nth-child(4){animation-delay:2.05s}
+@keyframes pop{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 .ts{color:var(--dim)}
-.who-them{color:var(--violet);font-weight:560}
-.who-me{color:var(--green);font-weight:560}
+.who-them{color:var(--violet);font-weight:600}
+.who-me{color:var(--green);font-weight:600}
+
+/* 3 — summary */
+.sum{display:flex;flex-direction:column;gap:11px}
+.sumsec{display:flex;flex-direction:column;gap:3px;opacity:0}
+.pane.on .sumsec{animation:pop .5s ease forwards}
+.pane.on .sumsec:nth-child(1){animation-delay:.2s}
+.pane.on .sumsec:nth-child(2){animation-delay:.75s}
+.pane.on .sumsec:nth-child(3){animation-delay:1.3s}
+.sumsec b{font-size:13.5px;font-weight:600}
+.sumsec span{font-size:13.5px;color:var(--muted);padding-left:22px}
+.sumsec .todo{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px}
+
+/* 4 — copy */
+.msg{padding:14px 16px;border-radius:14px;background:rgba(0,0,0,.42);border:1px solid var(--stroke);
+  font-size:13px;line-height:1.75}
+.msghead{font-weight:600;margin-bottom:8px}
+.msgline{color:var(--muted)}
+.msgline.pad{padding-left:18px}
+.msgline b{color:var(--ink)}
+.copied{position:absolute;right:26px;bottom:22px;padding:7px 15px;border-radius:99px;
+  background:linear-gradient(180deg,var(--green),#22a97b);color:#04231a;font-size:13px;font-weight:640;
+  opacity:0;transform:translateY(8px) scale(.94)}
+.pane.on .copied{animation:copied 2.4s ease forwards;animation-delay:1.5s}
+@keyframes copied{0%{opacity:0;transform:translateY(8px) scale(.94)}
+  14%{opacity:1;transform:none}80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-4px)}}
+
+/* step rail */
+.steps4{display:flex;border-top:1px solid var(--stroke)}
+.s4{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px 4px;
+  background:none;border:0;border-right:1px solid var(--stroke);cursor:pointer;
+  font:inherit;font-size:12.5px;color:var(--dim);transition:color .3s,background .3s}
+.s4:last-child{border-right:0}
+.s4 span{width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.45;transition:opacity .3s,transform .3s}
+.s4.on{color:var(--ink);background:rgba(255,255,255,.045)}
+.s4.on span{opacity:1;background:var(--indigo);transform:scale(1.5)}
+.s4:hover{color:var(--ink)}
 
 /* ---------- screenshots ---------- */
 .shots{display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:20px;align-items:start}
@@ -151,7 +211,8 @@ footer a:hover{color:var(--ink)}
 
 @media (prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
-  .lines div{opacity:1}
+  /* Without animations these would stay invisible, since the keyframes set opacity. */
+  .lines2 div,.sumsec,.copied{opacity:1}
 }
 @media(max-width:600px){
   header{padding:64px 0 48px}
@@ -183,7 +244,7 @@ footer a:hover{color:var(--ink)}
 <header>
   <div class="wrap">
     <h1>Your calls stay<br>on your laptop.</h1>
-    <p class="lede">A macOS menu bar app that records your meetings, transcribes them <b>entirely on-device</b> with whisper.cpp, and summarizes them with Claude — only if you ask. Ukrainian, English, Spanish, German, Russian.</p>
+    <p class="lede">A macOS menu bar app that records your meetings, transcribes them <b>entirely on-device</b> with whisper.cpp, and summarizes them with Claude — only if you ask.</p>
 
     <div class="cta">
       <a class="btn btn-primary" href="https://github.com/deemiles/meeting-noter/releases/latest/download/MeetingNoter.dmg">
@@ -195,39 +256,78 @@ footer a:hover{color:var(--ink)}
         View source
       </a>
     </div>
-    <p class="subcta">Free and open source · macOS 26+ · Apple Silicon · no dependencies</p>
+    <p class="subcta">Free and open source · macOS 26+ · no dependencies<br>Ukrainian · English · Español · Deutsch · Русский</p>
 
-    <div class="wavewrap" id="wave"></div>
+    <div class="glass stage" id="stage">
+      <div class="stagebar">
+        <span class="dot red"></span><span class="dot amber"></span><span class="dot green"></span>
+        <span class="stagetitle" id="stagetitle">Recording · Slack call</span>
+        <span class="stagestep" id="stagestep">1 / 4</span>
+      </div>
 
-    <div class="glass demo">
-      <h3>Two tracks in, labelled speakers out</h3>
-      <div class="track sys"><span class="tag">system</span><span class="bars" data-bars="34"></span></div>
-      <div class="track mic"><span class="tag">mic</span><span class="bars" data-bars="34"></span></div>
-      <div class="arrow"><span class="line"></span>transcribed separately, merged by timecode<span class="line"></span></div>
-      <div class="lines">
-        <div><span class="ts">[00:04]</span> <span class="who-them">Them:</span> so the migration lands Thursday?</div>
-        <div><span class="ts">[00:09]</span> <span class="who-me">Me:</span> Thursday morning, then we watch the error rate.</div>
-        <div><span class="ts">[00:15]</span> <span class="who-them">Them:</span> let's freeze deploys until Friday noon.</div>
-        <div><span class="ts">[00:21]</span> <span class="who-me">Me:</span> agreed — I'll post it in the channel.</div>
+      <div class="panes">
+        <!-- 1. Recording: two sources captured as separate tracks -->
+        <div class="pane" data-pane="0">
+          <div class="reccol">
+            <div class="recbtn"><span></span></div>
+            <div class="rectime" id="rectime">00:00</div>
+          </div>
+          <div class="tracks">
+            <div class="trk sys"><span class="lbl">system</span><span class="bars"></span></div>
+            <div class="trk mic"><span class="lbl">mic</span><span class="bars"></span></div>
+            <p class="note">Two separate tracks — never mixed down.</p>
+          </div>
+        </div>
+
+        <!-- 2. Transcription, on device -->
+        <div class="pane" data-pane="1">
+          <p class="panehead"><span class="chip">whisper.cpp</span> on your Mac · nothing uploaded</p>
+          <div class="lines2">
+            <div><span class="ts">[00:03]</span> <span class="who-them">Them:</span> so the migration lands Thursday?</div>
+            <div><span class="ts">[00:09]</span> <span class="who-me">Me:</span> Thursday morning, then we watch the error rate.</div>
+            <div><span class="ts">[00:18]</span> <span class="who-them">Them:</span> let's freeze deploys until Friday.</div>
+            <div><span class="ts">[00:24]</span> <span class="who-me">Me:</span> agreed, I'll post it in the channel.</div>
+          </div>
+        </div>
+
+        <!-- 3. Summary -->
+        <div class="pane" data-pane="2">
+          <p class="panehead"><span class="chip violet">Claude</span> topics · decisions · action items</p>
+          <div class="sum">
+            <div class="sumsec"><b>💬 Topics</b><span>Database migration, release window</span></div>
+            <div class="sumsec"><b>✅ Decisions</b><span>Ship Thursday morning, freeze deploys until Friday</span></div>
+            <div class="sumsec"><b>📌 Action items</b>
+              <span class="todo">☐ Max — rollback plan by Wednesday</span>
+              <span class="todo">☐ Olia — watch error rate after release</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Copy as a chat message -->
+        <div class="pane" data-pane="3">
+          <p class="panehead">One click → ready to paste in Slack</p>
+          <div class="msg">
+            <div class="msghead">📝 Meeting notes · 8 September, 14:30 · 27 min</div>
+            <div class="msgline">💬 <b>Topics</b></div>
+            <div class="msgline pad">• Database migration, release window</div>
+            <div class="msgline">✅ <b>Decisions</b></div>
+            <div class="msgline pad">• Ship Thursday morning</div>
+            <div class="msgline">📌 <b>Action items</b></div>
+            <div class="msgline pad">☐ Max — rollback plan by Wednesday</div>
+          </div>
+          <div class="copied" id="copied">Copied</div>
+        </div>
+      </div>
+
+      <div class="steps4">
+        <button class="s4" data-step="0" aria-label="Record"><span></span>Record</button>
+        <button class="s4" data-step="1" aria-label="Transcribe"><span></span>Transcribe</button>
+        <button class="s4" data-step="2" aria-label="Summarize"><span></span>Summarize</button>
+        <button class="s4" data-step="3" aria-label="Copy"><span></span>Copy</button>
       </div>
     </div>
   </div>
 </header>
-
-<section id="screens" style="padding-top:24px">
-  <div class="wrap">
-    <div class="shots">
-      <figure class="glass shot">
-        <img src="img/menu.png" alt="Meeting Noter menu bar popover with recordings in Ukrainian, English and German" loading="lazy">
-        <figcaption>Everything from the menu bar: record, pick a language, search past calls.</figcaption>
-      </figure>
-      <figure class="glass shot wide">
-        <img src="img/transcript.png" alt="Transcript window showing an AI summary and a timecoded transcript with speaker labels" loading="lazy">
-        <figcaption>Summary and transcript side by side — <b>Copy notes</b> puts it in your clipboard as a chat message.</figcaption>
-      </figure>
-    </div>
-  </div>
-</section>
 
 <section id="features">
   <div class="wrap">
@@ -323,43 +423,93 @@ footer a:hover{color:var(--ink)}
 </footer>
 
 <script>
-// Hero equaliser — deterministic heights so it reads as a waveform, not noise.
-const heights = [14,26,40,30,52,38,64,44,30,54,36,22,44,58,34,24,46,30,18,38,26,14];
-const wave = document.getElementById('wave');
-heights.forEach((h,i)=>{
-  const bar = document.createElement('i');
-  bar.style.setProperty('--h', h + 'px');
-  bar.style.animationDelay = (i * 0.07) + 's';
-  bar.style.animationDuration = (1.2 + (i % 4) * 0.18) + 's';
-  wave.appendChild(bar);
-});
+// ---- hero stage: plays the whole pipeline as four steps -------------------
+const panes = [...document.querySelectorAll('.pane')];
+const steps = [...document.querySelectorAll('.s4')];
+const titles = [
+  'Recording · Slack call',
+  'Transcribing on device',
+  'Summarizing with Claude',
+  'Copy notes → Slack'
+];
+const stageTitle = document.getElementById('stagetitle');
+const stageStep = document.getElementById('stagestep');
+const recTime = document.getElementById('rectime');
+const DURATIONS = [4600, 5200, 4800, 4600];
 
-// Two demo tracks: system audio talks in the gaps where the mic is quiet, and vice versa.
-document.querySelectorAll('.bars').forEach((el, track)=>{
-  const count = +el.dataset.bars;
-  for(let i=0;i<count;i++){
+// Conversational bars: the two rows take turns, the way a real call sounds.
+document.querySelectorAll('.trk .bars').forEach((el, row) => {
+  for (let i = 0; i < 30; i++) {
     const bar = document.createElement('i');
-    // Alternating conversational bursts so the two rows visibly take turns.
-    const speaking = track === 0 ? (i % 16 < 8) : (i % 16 >= 8);
-    const h = speaking ? 10 + Math.round(Math.abs(Math.sin(i * 1.7)) * 20) : 5;
-    bar.style.setProperty('--h', h + 'px');
-    bar.style.animationDelay = (i * 0.055) + 's';
+    const speaking = row === 0 ? (i % 14 < 7) : (i % 14 >= 7);
+    bar.style.setProperty('--h', (speaking ? 10 + Math.round(Math.abs(Math.sin(i * 1.6)) * 20) : 5) + 'px');
+    bar.style.animationDelay = (i * 0.05) + 's';
     el.appendChild(bar);
   }
 });
 
-// Reveal cards as they scroll into view.
-const io = new IntersectionObserver((entries)=>{
-  entries.forEach(e=>{
-    if(e.isIntersecting){
+let current = -1, timer = null, ticker = null;
+
+function show(index) {
+  if (index === current) return;
+  current = index;
+  panes.forEach((p, i) => p.classList.toggle('on', i === index));
+  steps.forEach((s, i) => s.classList.toggle('on', i === index));
+  stageTitle.textContent = titles[index];
+  stageStep.textContent = (index + 1) + ' / 4';
+
+  // The timer only runs while the recording pane is on screen.
+  clearInterval(ticker);
+  if (index === 0) {
+    let seconds = 0;
+    recTime.textContent = '00:00';
+    ticker = setInterval(() => {
+      seconds++;
+      recTime.textContent = '00:' + String(seconds).padStart(2, '0');
+    }, 1000);
+  }
+}
+
+function advance(next) {
+  clearTimeout(timer);
+  show(next);
+  timer = setTimeout(() => advance((current + 1) % panes.length), DURATIONS[current]);
+}
+
+steps.forEach((step, i) => step.addEventListener('click', () => advance(i)));
+
+const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (reduced) {
+  show(0);                       // no cycling; the first step stays put
+  clearInterval(ticker);
+} else {
+  // Only animate while the stage is actually visible.
+  const stage = document.getElementById('stage');
+  new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        if (current === -1) advance(0);
+      } else {
+        clearTimeout(timer);
+        clearInterval(ticker);
+        timer = null;
+      }
+    });
+  }, { threshold: .25 }).observe(stage);
+}
+
+// ---- reveal cards on scroll ----------------------------------------------
+const io = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
       e.target.style.transition = 'opacity .6s ease, transform .6s cubic-bezier(.2,.9,.3,1.2)';
       e.target.style.opacity = 1;
       e.target.style.transform = 'none';
       io.unobserve(e.target);
     }
   });
-},{threshold:.12});
-document.querySelectorAll('.card,.step').forEach((el,i)=>{
+}, { threshold: .12 });
+document.querySelectorAll('.card,.step').forEach((el, i) => {
   el.style.opacity = 0;
   el.style.transform = 'translateY(18px)';
   el.style.transitionDelay = (i % 3) * 0.07 + 's';
