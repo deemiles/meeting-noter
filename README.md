@@ -2,7 +2,9 @@
 
 A menu bar app for macOS 26 that records your calls, transcribes them locally, and can summarize them with Claude. Nothing leaves your machine unless you ask for a summary.
 
-Built with SwiftUI and the Liquid Glass design system. No Xcode project, no dependencies — just Swift Package Manager and ~2,000 lines of Swift.
+**[Download the latest release](https://github.com/deemiles/meeting-noter/releases/latest)** · **[meeting-noter website](https://deemiles.github.io/meeting-noter/)**
+
+Built with SwiftUI and the Liquid Glass design system. No Xcode project — just Swift Package Manager, Sparkle for updates, and ~2,000 lines of Swift.
 
 > **Screenshot placeholder** — drop `docs/menu.png` and `docs/transcript.png` here.
 
@@ -19,6 +21,7 @@ Every meeting-notes tool wants your audio on their servers. This one keeps it on
 - **Global hotkey ⌘⇧R** — start or stop from any app, with a live timer in the menu bar.
 - **Searchable history** — full-text search across every transcript you have ever recorded.
 - **Headless re-transcription** — `MeetingNoter --retranscribe <folder> [ru|en]`.
+- **Auto-updates** — Sparkle checks in the background and installs in place.
 
 Each recording lands in its own folder:
 
@@ -80,16 +83,36 @@ If the permission dialog keeps reappearing no matter how many times you approve 
 
 **Filter the hallucinations you cannot prevent.** Whisper models trained on scraped subtitles emit their training data on ambiguous audio: `subtitles by …`, `thanks for watching`, and — for Russian — the name of a prolific subtitle author. A small blocklist catches the recurring ones.
 
-### Signing and TCC
+### Signing, TCC, and why auto-updates need a stable certificate
 
-`build-app.sh` signs the bundle ad-hoc (`codesign --sign -`). macOS ties Screen Recording permission to the binary's `cdhash`, so **every rebuild invalidates the permission you granted** — and the toggle in System Settings updates the stored authorization without updating the code requirement, which produces an infinite prompt loop. The log line to look for:
+macOS ties Screen Recording permission to the app's *designated requirement*. Sign ad-hoc (`codesign --sign -`) and that requirement is the binary's `cdhash` — so **every rebuild and every auto-update invalidates the permission the user granted**. Worse, the toggle in System Settings then updates the stored authorization without updating the code requirement, which produces an infinite prompt loop no amount of clicking fixes. The log line to look for:
 
 ```
 Failed to match existing code requirement for subject <bundle-id>
 and service kTCCServiceScreenCapture
 ```
 
-The fix after a rebuild:
+Signing with a stable certificate — even a self-signed one, no paid Developer ID required — changes the requirement to:
+
+```
+identifier "com.dmytro.meetingnoter" and certificate root = H"..."
+```
+
+That survives rebuilds and Sparkle updates. `build-app.sh` looks for an identity named `Meeting Noter` and falls back to ad-hoc with a warning if it is missing. Create your own once:
+
+```sh
+openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 7300 -nodes \
+  -subj "/CN=Meeting Noter/O=Meeting Noter/C=US" \
+  -addext "extendedKeyUsage=critical,codeSigning" \
+  -addext "basicConstraints=critical,CA:false"
+openssl pkcs12 -export -out cert.p12 -inkey key.pem -in cert.pem -passout pass:PASSWORD \
+  -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1
+security import cert.p12 -k ~/Library/Keychains/login.keychain-db -P PASSWORD -T /usr/bin/codesign -A
+```
+
+Keep that key. Signing a later release with a *different* certificate breaks the requirement for everyone who already installed the app.
+
+If you do end up stuck in the prompt loop:
 
 ```sh
 pkill -x MeetingNoter
@@ -99,7 +122,16 @@ open dist/MeetingNoter.app
 # grant the permissions, then restart the app once more
 ```
 
-Signing with a real (even self-signed) certificate instead of ad-hoc makes the requirement stable across rebuilds and avoids this entirely.
+### Releasing
+
+```sh
+VERSION=1.1 BUILD=2 ./scripts/build-app.sh   # CFBundleVersion must increase
+VERSION=1.1 ./scripts/make-dmg.sh            # builds the dmg, prints the EdDSA signature
+gh release create v1.1.0 dist/MeetingNoter-1.1.dmg
+# paste the signature and length into docs/appcast.xml, then push
+```
+
+Updates are served from `docs/appcast.xml` on GitHub Pages and verified with an EdDSA key held in the maintainer's keychain.
 
 ## Building
 
@@ -115,7 +147,7 @@ The icon is generated from code — `scripts/make-icon.swift` draws a gradient s
 - macOS 26 only — the UI leans on Liquid Glass APIs that do not exist on earlier versions.
 - Meet detection matches browser window titles, so a renamed tab can throw it off.
 - The app UI is in English; transcripts support Russian and English.
-- Not notarized. Ad-hoc signed, build it yourself.
+- Not notarized — signed with a self-signed certificate, so the first launch needs right-click → Open.
 
 ## Legal note
 

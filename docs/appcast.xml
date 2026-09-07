@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>Meeting Noter</title>
+    <link>https://deemiles.github.io/meeting-noter/appcast.xml</link>
+    <description>Updates for Meeting Noter</description>
+    <language>en</language>
+    <item>
+      <title>1.0</title>
+      <pubDate>Mon, 07 Sep 2026 21:00:00 +0000</pubDate>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h3>First public release</h3>
+        <ul>
+          <li>Records Slack, Google Meet, or the full screen via ScreenCaptureKit</li>
+          <li>On-device transcription with whisper.cpp, speaker labels without diarization</li>
+          <li>Optional call summaries through the Claude CLI</li>
+          <li>Global ⌘⇧R hotkey and searchable history</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/deemiles/meeting-noter/releases/download/v1.0.0/MeetingNoter-1.0.dmg"
+        length="2741174"
+        type="application/octet-stream"
+        sparkle:edSignature="s8Rfz9xxhE9cHpBl3JBLHRua+Abd9/fT2v+RHio3wx4ZenbyzV7ZGRl8oVwsMO7888gXs96A+hlk7kykdGl5CA==" />
+    </item>
+  </channel>
+</rss>

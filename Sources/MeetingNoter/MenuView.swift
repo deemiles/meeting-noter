@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuView: View {
     @EnvironmentObject var state: AppState
+    @EnvironmentObject var updater: UpdaterViewModel
     @Environment(\.openWindow) private var openWindow
     @State private var showSettings = false
 
@@ -234,6 +235,9 @@ struct MenuView: View {
             )) {
                 Label("Launch at login", systemImage: "power")
             }
+            Toggle(isOn: $updater.automaticallyChecksForUpdates) {
+                Label("Check for updates automatically", systemImage: "arrow.down.circle")
+            }
             HStack(spacing: 6) {
                 Image(systemName: Summarizer.isAvailable ? "sparkles" : "sparkles.slash")
                 Text(Summarizer.isAvailable
@@ -242,6 +246,16 @@ struct MenuView: View {
             }
             .font(.caption)
             .foregroundStyle(.secondary)
+
+            HStack(spacing: 6) {
+                Button("Check for Updates…") { updater.checkForUpdates() }
+                    .buttonStyle(.link)
+                    .disabled(!updater.canCheckForUpdates)
+                Spacer()
+                Text("v\(updater.versionText)")
+                    .foregroundStyle(.tertiary)
+            }
+            .font(.caption)
         }
         .font(.callout)
         .toggleStyle(.switch)

@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct MeetingNoterApp: App {
     @StateObject private var state = AppState()
+    @StateObject private var updater = UpdaterViewModel()
 
     init() {
         Self.runCLIIfNeeded()
@@ -12,6 +13,7 @@ struct MeetingNoterApp: App {
         MenuBarExtra {
             MenuView()
                 .environmentObject(state)
+                .environmentObject(updater)
         } label: {
             // While recording, the menu bar shows a timer.
             if state.isRecording {

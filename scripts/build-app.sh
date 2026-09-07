@@ -7,20 +7,50 @@ APP_NAME="MeetingNoter"
 DIST="$PROJECT_DIR/dist"
 APP="$DIST/$APP_NAME.app"
 
+# Marketing version and build number. CFBundleVersion must increase on every release —
+# Sparkle compares it to decide whether an update is available.
+VERSION="${VERSION:-1.0}"
+BUILD="${BUILD:-1}"
+
+# Signing identity. A stable certificate keeps the app's designated requirement constant,
+# so macOS Screen Recording permission survives rebuilds and auto-updates. Falling back to
+# ad-hoc ("-") still builds, but every update will reset the user's permissions.
+IDENTITY="${IDENTITY:-Meeting Noter}"
+if ! security find-identity -v 2>/dev/null | grep -q "$IDENTITY" && \
+   ! security find-identity 2>/dev/null | grep -q "$IDENTITY"; then
+  echo "warning: signing identity '$IDENTITY' not found, falling back to ad-hoc" >&2
+  IDENTITY="-"
+fi
+
+APPCAST_URL="${APPCAST_URL:-https://deemiles.github.io/meeting-noter/appcast.xml}"
+SPARKLE_PUBLIC_KEY="${SPARKLE_PUBLIC_KEY:-q1MfGUxoJqNETTbZrkb7WXg+Jjf13XrAHimAL2i6KKs=}"
+
 cd "$PROJECT_DIR"
 swift build -c release
 
 rm -rf "$APP"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 
 cp ".build/release/$APP_NAME" "$APP/Contents/MacOS/$APP_NAME"
+
+# SPM links Sparkle via @rpath but only bakes in @loader_path, which points at Contents/MacOS.
+# Point the loader at the embedded framework. Must happen before signing — it rewrites the binary.
+install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/$APP_NAME" 2>/dev/null || true
 
 if [[ ! -f "Resources/AppIcon.icns" ]]; then
   swift scripts/make-icon.swift
 fi
 cp "Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+# Sparkle ships as an XCFramework through SPM; the SPM CLI does not embed it for us.
+SPARKLE_FRAMEWORK="$(find .build/artifacts -type d -name 'Sparkle.framework' -path '*macos-arm64_x86_64*' | head -1)"
+if [[ -z "$SPARKLE_FRAMEWORK" ]]; then
+  echo "error: Sparkle.framework not found — run 'swift package resolve' first" >&2
+  exit 1
+fi
+cp -R "$SPARKLE_FRAMEWORK" "$APP/Contents/Frameworks/"
+
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -36,9 +66,9 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0</string>
+	<string>$VERSION</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$BUILD</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>26.0</string>
 	<key>CFBundleIconFile</key>
@@ -49,10 +79,23 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 	<true/>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Meeting Noter records your voice during calls to produce a transcript.</string>
+	<key>SUFeedURL</key>
+	<string>$APPCAST_URL</string>
+	<key>SUPublicEDKey</key>
+	<string>$SPARKLE_PUBLIC_KEY</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
 </dict>
 </plist>
 PLIST
 
-codesign --force --sign - "$APP"
+# Sign inside-out: nested code first, the bundle last.
+find "$APP/Contents/Frameworks/Sparkle.framework" \
+  \( -name '*.app' -o -name '*.xpc' \) -maxdepth 4 -print0 2>/dev/null |
+  while IFS= read -r -d '' nested; do
+    codesign --force --options runtime --sign "$IDENTITY" "$nested"
+  done
+codesign --force --sign "$IDENTITY" "$APP/Contents/Frameworks/Sparkle.framework"
+codesign --force --sign "$IDENTITY" "$APP"
 
-echo "Done: $APP"
+echo "Done: $APP  ($VERSION build $BUILD, signed by '$IDENTITY')"
