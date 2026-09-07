@@ -3,6 +3,7 @@ import SwiftUI
 struct MenuView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var updater: UpdaterViewModel
+    @EnvironmentObject var models: ModelDownloader
     @Environment(\.openWindow) private var openWindow
     @State private var showSettings = false
 
@@ -11,7 +12,7 @@ struct MenuView: View {
             header
             recordPanel
 
-            if !Transcriber.isReady {
+            if !Transcriber.isReady || models.isDownloading {
                 setupWarning
             }
             if let error = state.lastError {
@@ -147,21 +148,59 @@ struct MenuView: View {
 
     // MARK: - Warnings
 
+    /// Shown until a Whisper model exists on disk. Downloading one is the only setup step,
+    /// and it happens here rather than in a terminal.
+    @ViewBuilder
     private var setupWarning: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Label("Transcription is not set up", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption.bold())
-            if Transcriber.whisperCLI == nil {
-                Text("Install it: brew install whisper-cpp").font(.caption2)
+        VStack(alignment: .leading, spacing: 10) {
+            if models.isDownloading {
+                HStack(spacing: 8) {
+                    Label("Downloading speech model", systemImage: "arrow.down.circle")
+                        .font(.caption.bold())
+                    Spacer()
+                    Button("Cancel") { models.cancel() }
+                        .buttonStyle(.link)
+                        .font(.caption)
+                }
+                ProgressView(value: models.progress)
+                    .progressViewStyle(.linear)
+                Text(models.progressText.isEmpty ? "Starting…" : models.progressText)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            } else {
+                Label("One-time setup", systemImage: "arrow.down.circle")
+                    .font(.caption.bold())
+                Text("Meeting Noter needs a speech model to transcribe. It stays on your Mac.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                ForEach(WhisperModel.allCases) { model in
+                    Button {
+                        models.download(model)
+                    } label: {
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(model.title).font(.callout.weight(.medium))
+                                Text(model.subtitle).font(.caption2).foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "arrow.down.circle.fill").font(.callout)
+                        }
+                        .padding(.horizontal, 11)
+                        .padding(.vertical, 8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .glassEffect(.regular.interactive(), in: .rect(cornerRadius: 11))
+                }
             }
-            if Transcriber.model == nil {
-                Text("Drop a .bin model into ~/Library/Application Support/MeetingNoter/models").font(.caption2)
+            if let error = models.error {
+                Text(error).font(.caption2).foregroundStyle(.red).lineLimit(2)
             }
         }
-        .foregroundStyle(.orange)
-        .padding(10)
+        .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular.tint(.orange.opacity(0.25)), in: .rect(cornerRadius: 14))
+        .glassEffect(.regular.tint(.indigo.opacity(0.22)), in: .rect(cornerRadius: 14))
     }
 
     private func errorBanner(_ error: String) -> some View {

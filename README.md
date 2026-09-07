@@ -36,24 +36,19 @@ Each recording lands in its own folder:
 
 ## Install
 
+**[Download the .dmg](https://github.com/deemiles/meeting-noter/releases/latest/download/MeetingNoter.dmg)**, drag it to Applications, then right-click → Open the first time (it is signed with a self-signed certificate, so Gatekeeper asks once).
+
+whisper.cpp is compiled into the app, so there is no Homebrew step. On first launch the menu offers a speech model — Large v3 Turbo (1.5 GB) or Small (466 MB) — and downloads it with a progress bar into `~/Library/Application Support/MeetingNoter/models/`.
+
+Building from source is one command:
+
 ```sh
-brew install whisper-cpp
 git clone https://github.com/deemiles/meeting-noter.git
 cd meeting-noter
 ./scripts/build-app.sh          # produces dist/MeetingNoter.app
 ```
 
-Then download a Whisper model into `~/Library/Application Support/MeetingNoter/models/`:
-
-```sh
-mkdir -p ~/Library/Application\ Support/MeetingNoter/models
-curl -L -o ~/Library/Application\ Support/MeetingNoter/models/ggml-large-v3-turbo.bin \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin
-```
-
-Any `.bin` works — the app picks the largest file in that folder.
-
-**Requirements:** macOS 26+ (Liquid Glass APIs), Swift 6.2+ via Command Line Tools. Apple Silicon recommended — `large-v3-turbo` transcribes an hour of audio in a couple of minutes on an M-series chip.
+**Requirements:** macOS 26+ (Liquid Glass APIs). Apple Silicon recommended — `large-v3-turbo` transcribes an hour of audio in a couple of minutes on an M-series chip. Building needs Swift 6.2+ via Command Line Tools; rebuilding the bundled whisper binary additionally needs `cmake`.
 
 ## Permissions
 
@@ -69,7 +64,8 @@ If the permission dialog keeps reappearing no matter how many times you approve 
 | File | Responsibility |
 | --- | --- |
 | `CallRecorder.swift` | ScreenCaptureKit → `AVAssetWriter`. One `.mov`, 15 fps h264, two AAC audio tracks. |
-| `Transcriber.swift` | Per-track normalization → 16 kHz mono WAV → `whisper-cli -oj` → merge by timecode. |
+| `Transcriber.swift` | Per-track normalization → 16 kHz mono WAV → bundled `whisper-cli -oj` → merge by timecode. |
+| `ModelDownloader.swift` | Fetches a Whisper model on first launch so no terminal is needed. |
 | `Summarizer.swift` | `claude -p` over the transcript → `summary.md`. |
 | `AppState.swift` | Recording state machine, search, launch-at-login. |
 | `MenuView.swift` | Liquid Glass UI: `glassEffect`, `GlassEffectContainer`, pulsing record button. |
@@ -136,9 +132,13 @@ Updates are served from `docs/appcast.xml` on GitHub Pages and verified with an 
 ## Building
 
 ```sh
-swift build -c release     # binary only
-./scripts/build-app.sh     # full .app bundle, icon included
+swift build -c release      # binary only
+./scripts/build-app.sh      # full .app bundle: icon, whisper, Sparkle, signature
+./scripts/build-whisper.sh  # rebuild the bundled whisper-cli (needs cmake)
+./scripts/make-dmg.sh       # disk image + appcast signature
 ```
+
+`build-whisper.sh` compiles whisper.cpp with `BUILD_SHARED_LIBS=OFF` and `GGML_METAL_EMBED_LIBRARY=ON`, producing a 3 MB binary that links only against system frameworks — which is what lets the app ship without Homebrew.
 
 The icon is generated from code — `scripts/make-icon.swift` draws a gradient squircle and a waveform, then packs it with `iconutil`. Two more scripts help when audio goes wrong: `analyze-recording.swift` prints RMS and peak per track, `mix-wav.swift` exports a normalized mix.
 

@@ -12,9 +12,9 @@ enum TranscriberError: LocalizedError {
         case .noAudioTracks:
             return "The recording has no audio tracks."
         case .whisperNotFound:
-            return "whisper-cli not found — install it: brew install whisper-cpp"
+            return "whisper-cli is missing from the app bundle — try reinstalling Meeting Noter."
         case .modelNotFound:
-            return "No Whisper model in ~/Library/Application Support/MeetingNoter/models"
+            return "No Whisper model yet — open the Meeting Noter menu and download one."
         case .processFailed(let tool, let code, let output):
             return "\(tool) exited with code \(code): \(output.suffix(300))"
         }
@@ -47,8 +47,15 @@ enum TranscriptLanguage: String, CaseIterable, Identifiable {
 /// → merge segments by timecode with speaker labels. The tracks are NEVER mixed down:
 /// a raw mic summed with system audio interferes with itself and wrecks recognition quality.
 enum Transcriber {
+    /// The app ships its own statically linked whisper-cli, so a plain download works with
+    /// no Homebrew involved. A system install still wins nothing — the bundled one is tried
+    /// first — but the fallbacks keep `swift run` working during development.
     static var whisperCLI: URL? {
-        let candidates = [
+        var candidates: [String] = []
+        if let bundled = Bundle.main.url(forResource: "whisper-cli", withExtension: nil) {
+            candidates.append(bundled.path)
+        }
+        candidates += [
             "/opt/homebrew/bin/whisper-cli",
             "/usr/local/bin/whisper-cli",
         ]

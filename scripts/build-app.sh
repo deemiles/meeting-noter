@@ -42,6 +42,15 @@ if [[ ! -f "Resources/AppIcon.icns" ]]; then
 fi
 cp "Resources/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
 
+# Bundled whisper-cli: statically linked, no Homebrew needed on the user's machine.
+# Rebuild it with scripts/build-whisper.sh.
+if [[ ! -x "Resources/bin/whisper-cli" ]]; then
+  echo "error: Resources/bin/whisper-cli missing — run ./scripts/build-whisper.sh" >&2
+  exit 1
+fi
+cp "Resources/bin/whisper-cli" "$APP/Contents/Resources/whisper-cli"
+chmod +x "$APP/Contents/Resources/whisper-cli"
+
 # Sparkle ships as an XCFramework through SPM; the SPM CLI does not embed it for us.
 SPARKLE_FRAMEWORK="$(find .build/artifacts -type d -name 'Sparkle.framework' -path '*macos-arm64_x86_64*' | head -1)"
 if [[ -z "$SPARKLE_FRAMEWORK" ]]; then
@@ -95,6 +104,7 @@ find "$APP/Contents/Frameworks/Sparkle.framework" \
   while IFS= read -r -d '' nested; do
     codesign --force --options runtime --sign "$IDENTITY" "$nested"
   done
+codesign --force --sign "$IDENTITY" "$APP/Contents/Resources/whisper-cli"
 codesign --force --sign "$IDENTITY" "$APP/Contents/Frameworks/Sparkle.framework"
 codesign --force --sign "$IDENTITY" "$APP"
 

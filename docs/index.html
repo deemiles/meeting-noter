@@ -187,7 +187,7 @@ footer a:hover{color:var(--ink)}
         View source
       </a>
     </div>
-    <p class="subcta">Free and open source · macOS 26+ · Apple Silicon · 2.6 MB</p>
+    <p class="subcta">Free and open source · macOS 26+ · Apple Silicon · no dependencies</p>
 
     <div class="wavewrap" id="wave"></div>
 
@@ -226,7 +226,7 @@ footer a:hover{color:var(--ink)}
       <div class="glass card">
         <span class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></span>
         <h4>Nothing leaves the machine</h4>
-        <p>whisper.cpp runs locally — large-v3-turbo does an hour of audio in a couple of minutes on Apple Silicon. Recordings live in a plain folder you own.</p>
+        <p>whisper.cpp ships inside the app and runs on the Metal GPU — an hour of audio takes a couple of minutes. Recordings live in a plain folder you own.</p>
       </div>
       <div class="glass card">
         <span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.7L20 10l-5.5 2.2L12 18l-2.5-5.8L4 10l6.1-1.3z"/></svg></span>
@@ -250,39 +250,31 @@ footer a:hover{color:var(--ink)}
 <section id="install">
   <div class="wrap">
     <p class="eyebrow">Getting started</p>
-    <h2>Four minutes to your first transcript</h2>
-    <p class="sub">Two of those minutes are downloading the Whisper model.</p>
+    <h2>Three clicks to your first transcript</h2>
+    <p class="sub">No Homebrew, no terminal. Most of that time is the speech model downloading.</p>
 
     <div class="steps">
       <div class="glass step">
         <span class="num">1</span>
         <div>
-          <h4>Install Whisper and a model</h4>
-          <p>Transcription runs through whisper.cpp. Any <code>.bin</code> model works — the app picks the largest one in the folder.</p>
-          <pre>brew install whisper-cpp
-
-mkdir -p ~/Library/Application\ Support/MeetingNoter/models
-curl -L -o ~/Library/Application\ Support/MeetingNoter/models/ggml-large-v3-turbo.bin \
-  https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin</pre>
-        </div>
-      </div>
-
-      <div class="glass step">
-        <span class="num">2</span>
-        <div>
           <h4>Download and drag to Applications</h4>
-          <p>Open the <code>.dmg</code> and drop Meeting Noter into your Applications folder like any other app.</p>
+          <p>Open the <code>.dmg</code> and drop Meeting Noter into your Applications folder. Whisper is built into the app — there is nothing to install with Homebrew and no terminal involved.</p>
         </div>
       </div>
 
       <div class="glass step warn">
-        <span class="num">3</span>
+        <span class="num">2</span>
         <div>
           <h4>First launch: right-click → Open</h4>
-          <p>Meeting Noter is signed with a self-signed certificate rather than a paid Apple Developer ID, so macOS will say it "cannot verify the developer". <b>Right-click the app icon and choose Open</b>, then confirm once. Every later launch — and every auto-update — works normally.</p>
-          <p style="margin-top:10px">Prefer not to trust a stranger's binary? Build it yourself in one command:</p>
-          <pre>git clone https://github.com/deemiles/meeting-noter.git
-cd meeting-noter && ./scripts/build-app.sh</pre>
+          <p>Meeting Noter is signed with a self-signed certificate rather than a paid Apple Developer ID, so macOS will say it "cannot verify the developer". <b>Right-click the app icon and choose Open</b>, then confirm once. Every later launch — and every auto-update — is normal.</p>
+        </div>
+      </div>
+
+      <div class="glass step">
+        <span class="num">3</span>
+        <div>
+          <h4>Pick a speech model</h4>
+          <p>On first run the menu offers two models and downloads the one you choose, with a progress bar. <b>Large v3 Turbo</b> (1.5 GB) for the best transcripts, <b>Small</b> (466 MB) if you want to start sooner. It is stored on your Mac and used offline from then on.</p>
         </div>
       </div>
 
@@ -290,7 +282,7 @@ cd meeting-noter && ./scripts/build-app.sh</pre>
         <span class="num">4</span>
         <div>
           <h4>Grant screen and microphone access</h4>
-          <p>Hit record once and macOS will ask for Screen &amp; System Audio Recording plus Microphone. <b>Restart the app after granting the screen permission</b> — a running process does not pick it up. Then ⌘⇧R starts and stops a recording from anywhere.</p>
+          <p>Hit record and macOS asks for Screen &amp; System Audio Recording plus Microphone. <b>Restart the app after granting the screen permission</b> — a running process does not pick it up. Then ⌘⇧R starts and stops a recording from anywhere.</p>
         </div>
       </div>
     </div>
