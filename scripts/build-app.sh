@@ -15,7 +15,17 @@ BUILD="${BUILD:-1}"
 # Signing identity. A stable certificate keeps the app's designated requirement constant,
 # so macOS Screen Recording permission survives rebuilds and auto-updates. Falling back to
 # ad-hoc ("-") still builds, but every update will reset the user's permissions.
-IDENTITY="${IDENTITY:-Meeting Noter}"
+if [[ -z "${IDENTITY:-}" ]]; then
+  # A Developer ID certificate means notarized, warning-free distribution; prefer it.
+  # `|| true`: grep exits 1 when no Developer ID exists yet, and set -e would abort.
+  DEVELOPER_ID="$(security find-identity -v -p codesigning 2>/dev/null |
+    grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"' || true)"
+  if [[ -n "$DEVELOPER_ID" ]]; then
+    IDENTITY="$DEVELOPER_ID"
+  else
+    IDENTITY="Meeting Noter"
+  fi
+fi
 if ! security find-identity -v 2>/dev/null | grep -q "$IDENTITY" && \
    ! security find-identity 2>/dev/null | grep -q "$IDENTITY"; then
   echo "warning: signing identity '$IDENTITY' not found, falling back to ad-hoc" >&2
@@ -98,14 +108,35 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 </plist>
 PLIST
 
-# Sign inside-out: nested code first, the bundle last.
-find "$APP/Contents/Frameworks/Sparkle.framework" \
-  \( -name '*.app' -o -name '*.xpc' \) -maxdepth 4 -print0 2>/dev/null |
-  while IFS= read -r -d '' nested; do
-    codesign --force --options runtime --sign "$IDENTITY" "$nested"
-  done
-codesign --force --sign "$IDENTITY" "$APP/Contents/Resources/whisper-cli"
-codesign --force --sign "$IDENTITY" "$APP/Contents/Frameworks/Sparkle.framework"
-codesign --force --sign "$IDENTITY" "$APP"
+# Hardened Runtime is required for notarization but breaks a self-signed setup
+# (library validation refuses to load Sparkle), so it is enabled only for Developer ID.
+SIGN_FLAGS=(--force --sign "$IDENTITY")
+APP_SIGN_FLAGS=(--force --sign "$IDENTITY")
+if [[ "$IDENTITY" == Developer\ ID* ]]; then
+  SIGN_FLAGS+=(--options runtime --timestamp)
+  APP_SIGN_FLAGS+=(--options runtime --timestamp --entitlements "$PROJECT_DIR/Resources/MeetingNoter.entitlements")
+fi
+
+# Sign inside-out, following Sparkle's documented order. Never use --deep here.
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+if [[ -e "$SPARKLE/Versions/B/XPCServices/Installer.xpc" ]]; then
+  codesign "${SIGN_FLAGS[@]}" "$SPARKLE/Versions/B/XPCServices/Installer.xpc"
+fi
+if [[ -e "$SPARKLE/Versions/B/XPCServices/Downloader.xpc" ]]; then
+  codesign "${SIGN_FLAGS[@]}" --preserve-metadata=entitlements "$SPARKLE/Versions/B/XPCServices/Downloader.xpc"
+fi
+if [[ -e "$SPARKLE/Versions/B/Autoupdate" ]]; then
+  codesign "${SIGN_FLAGS[@]}" "$SPARKLE/Versions/B/Autoupdate"
+fi
+if [[ -e "$SPARKLE/Versions/B/Updater.app" ]]; then
+  codesign "${SIGN_FLAGS[@]}" "$SPARKLE/Versions/B/Updater.app"
+fi
+codesign "${SIGN_FLAGS[@]}" "$SPARKLE"
+
+codesign "${SIGN_FLAGS[@]}" "$APP/Contents/Resources/whisper-cli"
+codesign "${APP_SIGN_FLAGS[@]}" "$APP"
 
 echo "Done: $APP  ($VERSION build $BUILD, signed by '$IDENTITY')"
+if [[ "$IDENTITY" == Developer\ ID* ]]; then
+  echo "Hardened Runtime on — ready for ./scripts/notarize.sh"
+fi

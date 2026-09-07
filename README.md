@@ -118,6 +118,25 @@ open dist/MeetingNoter.app
 # grant the permissions, then restart the app once more
 ```
 
+### Notarization
+
+With an Apple Developer Program membership, `build-app.sh` picks up a `Developer ID Application` certificate automatically, switches on Hardened Runtime, and applies `Resources/MeetingNoter.entitlements` (Hardened Runtime blocks microphone access without `com.apple.security.device.audio-input`; screen recording needs no entitlement). Sparkle's XPC services, `Autoupdate`, and `Updater.app` are signed individually in the order Sparkle documents — never with `--deep`.
+
+Then, once per machine:
+
+```sh
+xcrun notarytool store-credentials meeting-noter \
+    --apple-id "you@example.com" --team-id "TEAMID" --password "app-specific-password"
+```
+
+and per release:
+
+```sh
+./scripts/notarize.sh   # submits the dmg, waits, staples the ticket
+```
+
+Without a Developer ID the build falls back to the self-signed certificate and skips Hardened Runtime — everything still works, users just need right-click → Open once.
+
 ### Releasing
 
 ```sh
