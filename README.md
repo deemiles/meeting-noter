@@ -6,7 +6,11 @@ A menu bar app for macOS 26 that records your calls, transcribes them locally, a
 
 Built with SwiftUI and the Liquid Glass design system. No Xcode project — just Swift Package Manager, Sparkle for updates, and ~2,000 lines of Swift.
 
-> **Screenshot placeholder** — drop `docs/menu.png` and `docs/transcript.png` here.
+<p align="center">
+  <img src="docs/img/menu.png" width="330" alt="Meeting Noter menu bar popover">
+  &nbsp;&nbsp;
+  <img src="docs/img/transcript.png" width="430" alt="Transcript window with an AI summary">
+</p>
 
 ## Why
 
@@ -16,8 +20,8 @@ Every meeting-notes tool wants your audio on their servers. This one keeps it on
 
 - **Records the call, not your whole desktop** — pick Slack, a Google Meet tab, or the full screen. ScreenCaptureKit filters by application, so your other windows stay out of the video.
 - **Speaker separation without diarization** — the mic and the system audio are captured as two distinct tracks, transcribed separately, and merged by timecode. Lines come out labelled `Me` / `Them`.
-- **Fully local transcription** — whisper large-v3-turbo via `whisper-cli`. Russian and English.
-- **Optional AI summaries** — topics, decisions, action items via the Claude CLI (`summary.md`).
+- **Five languages** — Ukrainian, English, Spanish, German, Russian. Speaker labels and AI summaries come back in the language the call was held in.
+- **Optional AI summaries** — topics, decisions, action items via the Claude CLI (`summary.md`), plus one-click **Copy notes** that flattens the summary into a chat-ready message for Slack or email.
 - **Global hotkey ⌘⇧R** — start or stop from any app, with a live timer in the menu bar.
 - **Searchable history** — full-text search across every transcript you have ever recorded.
 - **Headless re-transcription** — `MeetingNoter --retranscribe <folder> [ru|en]`.
@@ -66,6 +70,7 @@ If the permission dialog keeps reappearing no matter how many times you approve 
 | `CallRecorder.swift` | ScreenCaptureKit → `AVAssetWriter`. One `.mov`, 15 fps h264, two AAC audio tracks. |
 | `Transcriber.swift` | Per-track normalization → 16 kHz mono WAV → bundled `whisper-cli -oj` → merge by timecode. |
 | `ModelDownloader.swift` | Fetches a Whisper model on first launch so no terminal is needed. |
+| `SummaryFormatter.swift` | Flattens `summary.md` into a message you can paste into a chat. |
 | `Summarizer.swift` | `claude -p` over the transcript → `summary.md`. |
 | `AppState.swift` | Recording state machine, search, launch-at-login. |
 | `MenuView.swift` | Liquid Glass UI: `glassEffect`, `GlassEffectContainer`, pulsing record button. |
@@ -165,7 +170,7 @@ The icon is generated from code — `scripts/make-icon.swift` draws a gradient s
 
 - macOS 26 only — the UI leans on Liquid Glass APIs that do not exist on earlier versions.
 - Meet detection matches browser window titles, so a renamed tab can throw it off.
-- The app UI is in English; transcripts support Russian and English.
+- The app UI is in English; transcripts support Ukrainian, English, Spanish, German and Russian.
 - Not notarized — signed with a self-signed certificate, so the first launch needs right-click → Open.
 
 ## Legal note

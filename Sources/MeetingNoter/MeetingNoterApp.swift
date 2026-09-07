@@ -40,7 +40,7 @@ struct MeetingNoterApp: App {
         .defaultSize(width: 520, height: 640)
     }
 
-    /// Headless mode: `MeetingNoter --retranscribe <recording folder> [ru|en]`.
+    /// Headless mode: `MeetingNoter --retranscribe <recording folder> [uk|en|es|de|ru]`.
     private static func runCLIIfNeeded() {
         let arguments = CommandLine.arguments
         guard let flagIndex = arguments.firstIndex(of: "--retranscribe"),
@@ -48,8 +48,8 @@ struct MeetingNoterApp: App {
 
         let folder = URL(fileURLWithPath: arguments[flagIndex + 1])
         let language = arguments.count > flagIndex + 2
-            ? (TranscriptLanguage(rawValue: arguments[flagIndex + 2]) ?? .russian)
-            : .russian
+            ? (TranscriptLanguage(rawValue: arguments[flagIndex + 2]) ?? .ukrainian)
+            : .ukrainian
 
         let semaphore = DispatchSemaphore(value: 0)
         Task.detached {

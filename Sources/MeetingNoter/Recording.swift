@@ -82,7 +82,7 @@ enum RecordingStore {
             } else if fm.fileExists(atPath: movieURL.path) {
                 // Video without metadata (a crash before the save, say) — reconstruct it.
                 let created = (try? movieURL.resourceValues(forKeys: [.creationDateKey]).creationDate) ?? Date()
-                meta = RecordingMeta(date: created, language: "ru", duration: nil, status: .recorded)
+                meta = RecordingMeta(date: created, language: "uk", duration: nil, status: .recorded)
                 saveMeta(meta, in: folder)
             } else {
                 // Empty folder left by a failed start — drop it.

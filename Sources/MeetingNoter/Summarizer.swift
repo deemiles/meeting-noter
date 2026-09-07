@@ -44,31 +44,58 @@ enum Summarizer {
         }
         let transcript = try String(contentsOf: transcriptURL, encoding: .utf8)
 
-        let prompt: String
+        // Each language gets its own prompt so the summary comes back in the language
+        // the meeting was actually held in, with headings that match.
+        let headings = language.summaryHeadings
+        let instruction: String
         switch language {
-        case .russian:
-            prompt = """
-            Ниже транскрипт рабочего звонка. Составь краткое саммари в markdown на русском со структурой:
-            ## Темы
-            ## Решения
-            ## Action items
-            (с ответственными, если они понятны из разговора; если решений или action items нет — так и напиши).
-            Не пересказывай дословно, только суть. Транскрипт:
-
-            \(transcript)
+        case .ukrainian:
+            instruction = """
+            Нижче транскрипт робочого дзвінка. Склади стислий підсумок у markdown українською зі структурою:
+            ## \(headings.topics)
+            ## \(headings.decisions)
+            ## \(headings.actions)
+            (з відповідальними, якщо вони зрозумілі з розмови; якщо рішень або завдань немає — так і напиши).
+            Не переказуй дослівно, лише суть.
             """
         case .english:
-            prompt = """
+            instruction = """
             Below is a transcript of a work call. Write a concise markdown summary in English structured as:
-            ## Topics
-            ## Decisions
-            ## Action items
+            ## \(headings.topics)
+            ## \(headings.decisions)
+            ## \(headings.actions)
             (with owners when clear from the conversation; if there are none, say so).
-            Do not retell verbatim, distill the essence. Transcript:
-
-            \(transcript)
+            Do not retell verbatim, distill the essence.
+            """
+        case .spanish:
+            instruction = """
+            A continuación hay la transcripción de una llamada de trabajo. Escribe un resumen conciso en markdown en español con esta estructura:
+            ## \(headings.topics)
+            ## \(headings.decisions)
+            ## \(headings.actions)
+            (con responsables cuando se deduzcan de la conversación; si no hay decisiones o tareas, indícalo).
+            No repitas literalmente, extrae lo esencial.
+            """
+        case .german:
+            instruction = """
+            Unten steht das Transkript eines Arbeitsgesprächs. Schreibe eine knappe Zusammenfassung in Markdown auf Deutsch mit dieser Struktur:
+            ## \(headings.topics)
+            ## \(headings.decisions)
+            ## \(headings.actions)
+            (mit Verantwortlichen, sofern aus dem Gespräch erkennbar; falls es keine gibt, schreibe das).
+            Nicht wörtlich nacherzählen, nur das Wesentliche.
+            """
+        case .russian:
+            instruction = """
+            Ниже транскрипт рабочего звонка. Составь краткое саммари в markdown на русском со структурой:
+            ## \(headings.topics)
+            ## \(headings.decisions)
+            ## \(headings.actions)
+            (с ответственными, если они понятны из разговора; если решений или задач нет — так и напиши).
+            Не пересказывай дословно, только суть.
             """
         }
+        let prompt = instruction + "\n\n" + transcript
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: claudePath)

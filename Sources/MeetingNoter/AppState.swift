@@ -20,12 +20,12 @@ final class AppState: ObservableObject {
     @Published var viewingRecording: Recording?
     @Published var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
-    @AppStorage("language") private var languageRaw = TranscriptLanguage.russian.rawValue
+    @AppStorage("language") private var languageRaw = TranscriptLanguage.ukrainian.rawValue
     @AppStorage("source") private var sourceRaw = CaptureSource.slack.rawValue
     @AppStorage("sounds") var soundsEnabled = true
 
     var language: TranscriptLanguage {
-        get { TranscriptLanguage(rawValue: languageRaw) ?? .russian }
+        get { TranscriptLanguage(rawValue: languageRaw) ?? .ukrainian }
         set { languageRaw = newValue.rawValue }
     }
 
@@ -280,6 +280,21 @@ final class AppState: ObservableObject {
     private func playSound(_ name: String) {
         guard soundsEnabled else { return }
         NSSound(named: NSSound.Name(name))?.play()
+    }
+
+    /// Copies the summary as a chat-ready message rather than raw markdown.
+    /// Returns false when there is no summary to copy.
+    @discardableResult
+    func copySummaryAsMessage(_ recording: Recording) -> Bool {
+        guard let summary = summaryText(for: recording) else { return false }
+        let language = TranscriptLanguage(rawValue: recording.meta.language) ?? self.language
+        let message = SummaryFormatter.message(
+            summary: summary, recording: recording, language: language
+        )
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(message, forType: .string)
+        return true
     }
 
     func openTranscript(_ recording: Recording) {

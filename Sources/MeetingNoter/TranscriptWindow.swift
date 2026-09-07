@@ -3,6 +3,7 @@ import AppKit
 
 struct TranscriptWindowView: View {
     @EnvironmentObject var state: AppState
+    @State private var copiedMessage = false
 
     var body: some View {
         Group {
@@ -83,7 +84,19 @@ struct TranscriptWindowView: View {
                     }
                 }
 
-                glassButton("Copy", icon: "doc.on.doc") {
+                if recording.hasSummary {
+                    glassButton(copiedMessage ? "Copied" : "Copy notes",
+                                icon: copiedMessage ? "checkmark" : "text.badge.checkmark",
+                                tint: .indigo) {
+                        state.copySummaryAsMessage(recording)
+                        copiedMessage = true
+                        Task {
+                            try? await Task.sleep(for: .seconds(1.6))
+                            copiedMessage = false
+                        }
+                    }
+                }
+                glassButton("Copy all", icon: "doc.on.doc") {
                     copyTranscript(recording)
                 }
                 glassButton("Finder", icon: "folder") {
@@ -125,10 +138,7 @@ struct TranscriptWindowView: View {
             Label("Summary", systemImage: "sparkles")
                 .font(.headline)
                 .foregroundStyle(.purple)
-            Text(markdown(summary))
-                .font(.body)
-                .lineSpacing(3)
-                .textSelection(.enabled)
+            summaryBody(summary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -182,6 +192,36 @@ struct TranscriptWindowView: View {
         return minutes >= 60
             ? String(format: "%d:%02d:%02d", minutes / 60, minutes % 60, seconds)
             : String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Inline-only markdown parsing keeps line breaks but renders "## Topics" literally.
+    /// Headings and bullets are laid out here instead, with inline styling still parsed.
+    @ViewBuilder
+    private func summaryBody(_ summary: String) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            ForEach(Array(summary.components(separatedBy: .newlines).enumerated()), id: \.offset) { _, rawLine in
+                let line = rawLine.trimmingCharacters(in: .whitespaces)
+                if line.isEmpty {
+                    Spacer().frame(height: 2)
+                } else if line.hasPrefix("#") {
+                    Text(markdown(line.drop(while: { $0 == "#" }).trimmingCharacters(in: .whitespaces)))
+                        .font(.headline)
+                        .padding(.top, 4)
+                } else if line.hasPrefix("- ") || line.hasPrefix("* ") || line.hasPrefix("+ ") {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("•").foregroundStyle(.secondary)
+                        Text(markdown(String(line.dropFirst(2))))
+                    }
+                    .padding(.leading, 4)
+                } else {
+                    Text(markdown(line))
+                }
+            }
+        }
+        .font(.body)
+        .lineSpacing(3)
+        .textSelection(.enabled)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func markdown(_ text: String) -> AttributedString {

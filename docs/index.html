@@ -107,6 +107,14 @@ h1{
 .who-them{color:var(--violet);font-weight:560}
 .who-me{color:var(--green);font-weight:560}
 
+/* ---------- screenshots ---------- */
+.shots{display:grid;grid-template-columns:minmax(0,330px) minmax(0,1fr);gap:20px;align-items:start}
+.shot{padding:14px;margin:0;overflow:hidden}
+.shot img{display:block;width:100%;height:auto;border-radius:14px}
+.shot figcaption{margin-top:12px;font-size:13.5px;color:var(--muted);line-height:1.5}
+.shot figcaption b{color:var(--ink);font-weight:560}
+@media(max-width:820px){.shots{grid-template-columns:1fr}}
+
 /* ---------- sections ---------- */
 section{padding:76px 0}
 .eyebrow{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--indigo);margin-bottom:14px;text-align:center}
@@ -175,7 +183,7 @@ footer a:hover{color:var(--ink)}
 <header>
   <div class="wrap">
     <h1>Your calls stay<br>on your laptop.</h1>
-    <p class="lede">A macOS menu bar app that records your meetings, transcribes them <b>entirely on-device</b> with whisper.cpp, and summarizes them with Claude — only if you ask.</p>
+    <p class="lede">A macOS menu bar app that records your meetings, transcribes them <b>entirely on-device</b> with whisper.cpp, and summarizes them with Claude — only if you ask. Ukrainian, English, Spanish, German, Russian.</p>
 
     <div class="cta">
       <a class="btn btn-primary" href="https://github.com/deemiles/meeting-noter/releases/latest/download/MeetingNoter.dmg">
@@ -206,6 +214,21 @@ footer a:hover{color:var(--ink)}
   </div>
 </header>
 
+<section id="screens" style="padding-top:24px">
+  <div class="wrap">
+    <div class="shots">
+      <figure class="glass shot">
+        <img src="img/menu.png" alt="Meeting Noter menu bar popover with recordings in Ukrainian, English and German" loading="lazy">
+        <figcaption>Everything from the menu bar: record, pick a language, search past calls.</figcaption>
+      </figure>
+      <figure class="glass shot wide">
+        <img src="img/transcript.png" alt="Transcript window showing an AI summary and a timecoded transcript with speaker labels" loading="lazy">
+        <figcaption>Summary and transcript side by side — <b>Copy notes</b> puts it in your clipboard as a chat message.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
 <section id="features">
   <div class="wrap">
     <p class="eyebrow">What it does</p>
@@ -226,12 +249,12 @@ footer a:hover{color:var(--ink)}
       <div class="glass card">
         <span class="ico"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 018 0v3"/></svg></span>
         <h4>Nothing leaves the machine</h4>
-        <p>whisper.cpp ships inside the app and runs on the Metal GPU — an hour of audio takes a couple of minutes. Recordings live in a plain folder you own.</p>
+        <p>whisper.cpp ships inside the app and runs on the Metal GPU — an hour of audio takes a couple of minutes. Ukrainian, English, Spanish, German and Russian. Recordings live in a plain folder you own.</p>
       </div>
       <div class="glass card">
         <span class="ico"><svg viewBox="0 0 24 24"><path d="M12 3l1.9 5.7L20 10l-5.5 2.2L12 18l-2.5-5.8L4 10l6.1-1.3z"/></svg></span>
         <h4>Summaries on demand</h4>
-        <p>Press ✨ and the transcript goes to the Claude CLI, which writes back topics, decisions, and action items as <code>summary.md</code>. The only step that touches a network.</p>
+        <p>Press ✨ and the transcript goes to the Claude CLI, which writes back topics, decisions and action items — in the language of the call. <b>Copy notes</b> turns that into a message ready to paste into Slack.</p>
       </div>
       <div class="glass card">
         <span class="ico"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>

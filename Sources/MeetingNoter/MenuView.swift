@@ -218,14 +218,7 @@ struct MenuView: View {
     private var pickers: some View {
         GlassEffectContainer(spacing: 10) {
             VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 6) {
-                    chip(icon: "globe", title: "Русский", isSelected: state.language == .russian) {
-                        state.language = .russian
-                    }
-                    chip(icon: "globe", title: "English", isSelected: state.language == .english) {
-                        state.language = .english
-                    }
-                }
+                languageMenu
                 HStack(spacing: 6) {
                     ForEach(CaptureSource.allCases) { source in
                         chip(icon: source.icon, title: source.title, isSelected: state.source == source) {
@@ -237,6 +230,36 @@ struct MenuView: View {
         }
         .disabled(state.isRecording)
         .opacity(state.isRecording ? 0.5 : 1)
+    }
+
+    /// Five languages would overflow a row of chips, so the picker collapses into a menu.
+    private var languageMenu: some View {
+        Menu {
+            ForEach(TranscriptLanguage.allCases) { language in
+                Button {
+                    state.language = language
+                } label: {
+                    if state.language == language {
+                        Label(language.title, systemImage: "checkmark")
+                    } else {
+                        Text(language.title)
+                    }
+                }
+            }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "globe").font(.caption)
+                Text(state.language.title).font(.callout)
+                Image(systemName: "chevron.down").font(.caption2).foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 6)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .fixedSize()
+        .glassEffect(.regular.interactive(), in: .capsule)
     }
 
     private func chip(icon: String, title: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
@@ -344,9 +367,18 @@ struct MenuView: View {
                         }
                     }
                 }
-                .frame(maxHeight: 250)
+                // A ScrollView is infinitely flexible, and the popover sizes itself to its
+                // content — together that collapses the list to zero height. Give it an
+                // explicit height derived from the row count instead.
+                .frame(height: listHeight)
             }
         }
+    }
+
+    /// Height for the recordings list: one row is ~62pt, capped so the menu stays compact.
+    private var listHeight: CGFloat {
+        let rows = max(1, min(state.filteredRecordings.count, 4))
+        return min(CGFloat(rows) * 62, 250)
     }
 
     private var searchField: some View {
@@ -398,6 +430,7 @@ struct MenuView: View {
 
 struct RecordingRow: View {
     @EnvironmentObject var state: AppState
+    @State private var copiedSummary = false
     let recording: Recording
     let onOpen: () -> Void
 
@@ -439,6 +472,17 @@ struct RecordingRow: View {
             } else {
                 iconButton("sparkles", help: "Summarize with Claude") {
                     state.generateSummary(recording)
+                }
+            }
+        }
+        if recording.hasSummary {
+            iconButton(copiedSummary ? "checkmark" : "text.badge.checkmark",
+                       help: "Copy notes as a message") {
+                state.copySummaryAsMessage(recording)
+                copiedSummary = true
+                Task {
+                    try? await Task.sleep(for: .seconds(1.6))
+                    copiedSummary = false
                 }
             }
         }

@@ -22,23 +22,66 @@ enum TranscriberError: LocalizedError {
 }
 
 enum TranscriptLanguage: String, CaseIterable, Identifiable {
-    case russian = "ru"
+    case ukrainian = "uk"
     case english = "en"
+    case spanish = "es"
+    case german = "de"
+    case russian = "ru"
 
     var id: String { rawValue }
 
+    /// Endonyms — a language picker reads better in the language it offers.
     var title: String {
         switch self {
-        case .russian: return "Русский"
+        case .ukrainian: return "Українська"
         case .english: return "English"
+        case .spanish: return "Español"
+        case .german: return "Deutsch"
+        case .russian: return "Русский"
         }
     }
 
     /// Speaker labels: (system audio, microphone).
     var speakerLabels: (others: String, me: String) {
         switch self {
-        case .russian: return ("Собеседник", "Вы")
+        case .ukrainian: return ("Співрозмовник", "Ви")
         case .english: return ("Them", "Me")
+        case .spanish: return ("Interlocutor", "Yo")
+        case .german: return ("Gesprächspartner", "Ich")
+        case .russian: return ("Собеседник", "Вы")
+        }
+    }
+
+    /// Section headings used when the summary is flattened into a chat message.
+    var summaryHeadings: (topics: String, decisions: String, actions: String) {
+        switch self {
+        case .ukrainian: return ("Теми", "Рішення", "Завдання")
+        case .english: return ("Topics", "Decisions", "Action items")
+        case .spanish: return ("Temas", "Decisiones", "Tareas")
+        case .german: return ("Themen", "Entscheidungen", "Aufgaben")
+        case .russian: return ("Темы", "Решения", "Задачи")
+        }
+    }
+
+    /// Short duration unit for the copied-notes header.
+    var minutesUnit: String {
+        switch self {
+        case .ukrainian: return "хв"
+        case .english: return "min"
+        case .spanish: return "min"
+        case .german: return "Min."
+        case .russian: return "мин"
+        }
+    }
+
+    /// Title line for a copied summary, e.g. "Нотатки зустрічі".
+    var notesTitle: String {
+        switch self {
+        case .ukrainian: return "Нотатки зустрічі"
+        case .english: return "Meeting notes"
+        case .spanish: return "Notas de la reunión"
+        case .german: return "Besprechungsnotizen"
+        case .russian: return "Заметки встречи"
         }
     }
 }
