@@ -127,7 +127,7 @@ open dist/MeetingNoter.app
 ```sh
 VERSION=1.1 BUILD=2 ./scripts/build-app.sh   # CFBundleVersion must increase
 VERSION=1.1 ./scripts/make-dmg.sh            # builds the dmg, prints the EdDSA signature
-gh release create v1.1.0 dist/MeetingNoter-1.1.dmg
+gh release create v1.1.0 dist/MeetingNoter.dmg   # keep the asset name stable
 # paste the signature and length into docs/appcast.xml, then push
 ```
 

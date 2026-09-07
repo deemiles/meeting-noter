@@ -6,7 +6,7 @@ PROJECT_DIR="${0:a:h:h}"
 APP_NAME="MeetingNoter"
 APP="$PROJECT_DIR/dist/$APP_NAME.app"
 VERSION="${VERSION:-$(defaults read "$APP/Contents/Info.plist" CFBundleShortVersionString)}"
-DMG="$PROJECT_DIR/dist/$APP_NAME-$VERSION.dmg"
+DMG="$PROJECT_DIR/dist/$APP_NAME.dmg"   # stable name: the download link on the site points here
 STAGING="$(mktemp -d)"
 
 [[ -d "$APP" ]] || { echo "error: $APP not found — run scripts/build-app.sh first" >&2; exit 1; }
