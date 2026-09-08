@@ -6,6 +6,28 @@
     <description>Updates for Meeting Noter</description>
     <language>en</language>
     <item>
+      <title>1.2</title>
+      <pubDate>Tue, 08 Sep 2026 10:30:00 +0000</pubDate>
+      <sparkle:version>3</sparkle:version>
+      <sparkle:shortVersionString>1.2</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h3>Notarized by Apple, and four more languages</h3>
+        <ul>
+          <li>Signed with a Developer ID certificate and notarized — the app now opens with a normal double-click, no security warning</li>
+          <li>Ukrainian, Spanish and German added alongside English and Russian; speaker labels and summaries follow the language of the call</li>
+          <li><b>Copy notes</b> turns a summary into a message ready to paste into Slack or email</li>
+          <li>Fixed: the recordings list never appeared in the menu bar popover</li>
+          <li>Fixed: summary headings showed as literal "## Topics"</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/deemiles/meeting-noter/releases/download/v1.2.0/MeetingNoter.dmg"
+        length="4086459"
+        type="application/octet-stream"
+        sparkle:edSignature="LQyLRqpg1OhkCXQquWT3qHHfydocYk2Dl+MglOCdKl2uO/GFuFkrGygGaMQa+IWbgxxja6e8ycKZGZTFMSHNCg==" />
+    </item>
+    <item>
       <title>1.1</title>
       <pubDate>Tue, 08 Sep 2026 00:20:00 +0000</pubDate>
       <sparkle:version>2</sparkle:version>

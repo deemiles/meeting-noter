@@ -36,7 +36,7 @@ Each recording lands in its own folder:
 
 ## Install
 
-**[Download the .dmg](https://github.com/deemiles/meeting-noter/releases/latest/download/MeetingNoter.dmg)**, drag it to Applications, then right-click → Open the first time (it is signed with a self-signed certificate, so Gatekeeper asks once).
+**[Download the .dmg](https://github.com/deemiles/meeting-noter/releases/latest/download/MeetingNoter.dmg)**, drag it to Applications, and open it. The app is signed with a Developer ID certificate and notarized by Apple, so Gatekeeper stays out of the way.
 
 whisper.cpp is compiled into the app, so there is no Homebrew step. On first launch the menu offers a speech model — Large v3 Turbo (1.5 GB) or Small (466 MB) — and downloads it with a progress bar into `~/Library/Application Support/MeetingNoter/models/`.
 
@@ -136,7 +136,7 @@ and per release:
 ./scripts/notarize.sh   # submits the dmg, waits, staples the ticket
 ```
 
-Without a Developer ID the build falls back to the self-signed certificate and skips Hardened Runtime — everything still works, users just need right-click → Open once.
+Without a Developer ID the build falls back to a self-signed certificate and skips Hardened Runtime — everything still works, users just need right-click → Open once.
 
 ### Releasing
 
@@ -167,7 +167,7 @@ The icon is generated from code — `scripts/make-icon.swift` draws a gradient s
 - macOS 26 only — the UI leans on Liquid Glass APIs that do not exist on earlier versions.
 - Meet detection matches browser window titles, so a renamed tab can throw it off.
 - The app UI is in English; transcripts support Ukrainian, English, Spanish, German and Russian.
-- Not notarized — signed with a self-signed certificate, so the first launch needs right-click → Open.
+- Distributed outside the App Store, so the app is not sandboxed.
 
 ## Legal note
 

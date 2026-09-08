@@ -26,6 +26,15 @@ hdiutil create \
   -quiet \
   "$DMG"
 
+# Sign the image itself when a Developer ID exists: an unsigned dmg makes Gatekeeper
+# fall back to checking the app inside, and `spctl` reports "no usable signature".
+IDENTITY="${IDENTITY:-$(security find-identity -v -p codesigning 2>/dev/null |
+  grep -o '"Developer ID Application: [^"]*"' | head -1 | tr -d '"' || true)}"
+if [[ -n "$IDENTITY" ]]; then
+  codesign --force --sign "$IDENTITY" --timestamp "$DMG"
+  echo "Signed the image with '$IDENTITY'"
+fi
+
 echo "Built: $DMG ($(du -h "$DMG" | cut -f1))"
 
 # Sparkle needs an EdDSA signature and the file length for the appcast entry.
