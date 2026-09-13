@@ -5,6 +5,7 @@ import CoreMedia
 
 enum CaptureSource: String, CaseIterable, Identifiable {
     case slack
+    case teams
     case meet
     case fullScreen
 
@@ -13,6 +14,7 @@ enum CaptureSource: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .slack: return "Slack"
+        case .teams: return "Teams"
         case .meet: return "Meet"
         case .fullScreen: return "Screen"
         }
@@ -21,6 +23,7 @@ enum CaptureSource: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .slack: return "number.square.fill"
+        case .teams: return "person.2.fill"
         case .meet: return "video.square.fill"
         case .fullScreen: return "rectangle.inset.filled"
         }
@@ -29,6 +32,7 @@ enum CaptureSource: String, CaseIterable, Identifiable {
 
 enum RecorderError: LocalizedError {
     case slackNotRunning
+    case teamsNotFound
     case meetNotFound
     case noDisplay
     case writerFailed(String)
@@ -37,6 +41,8 @@ enum RecorderError: LocalizedError {
         switch self {
         case .slackNotRunning:
             return "Slack isn't running — open Slack and try again (or pick “Screen”)."
+        case .teamsNotFound:
+            return "Microsoft Teams isn't running and no Teams tab is open — start the meeting and try again."
         case .meetNotFound:
             return "No Google Meet tab found in any browser — open the meeting and try again."
         case .noDisplay:
@@ -136,7 +142,22 @@ final class CallRecorder: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
         try await stream.startCapture()
     }
 
-    /// Browsers we search for a Google Meet tab.
+    /// Microsoft Teams ships under two bundle ids: the classic client and the rewritten one.
+    private static let teamsBundleIDs: Set<String> = [
+        "com.microsoft.teams",   // classic
+        "com.microsoft.teams2",  // Teams (work or school), the 2023 rewrite
+    ]
+
+    /// Teams window titles look like "Microsoft Teams", "(2) Microsoft Teams" or
+    /// "Meeting | Microsoft Teams"; the web client is served from two domains.
+    static func isTeamsTitle(_ title: String?) -> Bool {
+        let title = (title ?? "").lowercased()
+        return title.contains("microsoft teams")
+            || title.contains("teams.microsoft.com")
+            || title.contains("teams.live.com")
+    }
+
+    /// Browsers we search for a Google Meet or Teams tab.
     private static let browserBundleIDs: Set<String> = [
         "com.google.Chrome", "com.google.Chrome.beta", "com.google.Chrome.canary",
         "com.apple.Safari",
@@ -159,6 +180,27 @@ final class CallRecorder: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
                 $0.bundleIdentifier.lowercased().contains("slack")
             }) else { throw RecorderError.slackNotRunning }
             return try appFilter(for: slack, content: content)
+
+        case .teams:
+            // Teams runs either as a native app or as a browser tab, and plenty of people use
+            // both. Prefer the native client, but only when it actually has a window on screen —
+            // it often sits in the background while the meeting itself runs in a browser.
+            let nativeTeams = content.windows.first { window in
+                guard window.isOnScreen, let app = window.owningApplication else { return false }
+                return teamsBundleIDs.contains(app.bundleIdentifier)
+            }?.owningApplication
+            if let nativeTeams {
+                return try appFilter(for: nativeTeams, content: content)
+            }
+            let teamsBrowser = content.windows.first { window in
+                guard window.isOnScreen,
+                      let app = window.owningApplication,
+                      browserBundleIDs.contains(app.bundleIdentifier)
+                else { return false }
+                return isTeamsTitle(window.title)
+            }?.owningApplication
+            guard let teamsBrowser else { throw RecorderError.teamsNotFound }
+            return try appFilter(for: teamsBrowser, content: content)
 
         case .meet:
             // A Meet tab title looks like "Meet – abc-defg-hij".

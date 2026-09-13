@@ -14,7 +14,7 @@ Every meeting-notes tool wants your audio on their servers. This one keeps it on
 
 ## Features
 
-- **Records the call, not your whole desktop** — pick Slack, a Google Meet tab, or the full screen. ScreenCaptureKit filters by application, so your other windows stay out of the video.
+- **Records the call, not your whole desktop** — pick Slack, Microsoft Teams, a Google Meet tab, or the full screen. ScreenCaptureKit filters by application, so your other windows stay out of the video. Teams works both as the native client and as a browser tab.
 - **Speaker separation without diarization** — the mic and the system audio are captured as two distinct tracks, transcribed separately, and merged by timecode. Lines come out labelled `Me` / `Them`.
 - **Five languages** — Ukrainian, English, Spanish, German, Russian. Speaker labels and AI summaries come back in the language the call was held in.
 - **Optional AI summaries** — topics, decisions, action items via the Claude CLI (`summary.md`), plus one-click **Copy notes** that flattens the summary into a chat-ready message for Slack or email.
@@ -63,7 +63,7 @@ If the permission dialog keeps reappearing no matter how many times you approve 
 
 | File | Responsibility |
 | --- | --- |
-| `CallRecorder.swift` | ScreenCaptureKit → `AVAssetWriter`. One `.mov`, 15 fps h264, two AAC audio tracks. |
+| `CallRecorder.swift` | ScreenCaptureKit → `AVAssetWriter`. One `.mov`, 15 fps h264, two AAC audio tracks. Picks the capture filter for Slack, Teams, Meet or the full screen. |
 | `Transcriber.swift` | Per-track normalization → 16 kHz mono WAV → bundled `whisper-cli -oj` → merge by timecode. |
 | `ModelDownloader.swift` | Fetches a Whisper model on first launch so no terminal is needed. |
 | `SummaryFormatter.swift` | Flattens `summary.md` into a message you can paste into a chat. |
@@ -165,7 +165,7 @@ The icon is generated from code — `scripts/make-icon.swift` draws a gradient s
 ## Limitations
 
 - macOS 26 only — the UI leans on Liquid Glass APIs that do not exist on earlier versions.
-- Meet detection matches browser window titles, so a renamed tab can throw it off.
+- Meet and browser-based Teams are detected by window title, so a renamed tab can throw it off.
 - The app UI is in English; transcripts support Ukrainian, English, Spanish, German and Russian.
 - Distributed outside the App Store, so the app is not sandboxed.
 

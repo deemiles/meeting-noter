@@ -219,7 +219,12 @@ struct MenuView: View {
         GlassEffectContainer(spacing: 10) {
             VStack(alignment: .leading, spacing: 8) {
                 languageMenu
-                HStack(spacing: 6) {
+                // Four sources no longer fit on one row (319pt of chips in a 316pt menu),
+                // and a 2x2 grid leaves room for more later.
+                LazyVGrid(
+                    columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
+                    spacing: 6
+                ) {
                     ForEach(CaptureSource.allCases) { source in
                         chip(icon: source.icon, title: source.title, isSelected: state.source == source) {
                             state.source = source
@@ -272,7 +277,9 @@ struct MenuView: View {
             }
             .padding(.horizontal, 11)
             .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
             .foregroundStyle(isSelected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+            .contentShape(Capsule())
         }
         .buttonStyle(.plain)
         .glassEffect(
