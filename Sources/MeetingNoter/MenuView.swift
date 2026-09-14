@@ -4,13 +4,19 @@ struct MenuView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var updater: UpdaterViewModel
     @EnvironmentObject var models: ModelDownloader
+    @EnvironmentObject var permissions: PermissionsModel
     @Environment(\.openWindow) private var openWindow
     @State private var showSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             header
-            recordPanel
+
+            if permissions.allGranted && !permissions.needsRestart {
+                recordPanel
+            } else {
+                permissionGate
+            }
 
             if !Transcriber.isReady || models.isDownloading {
                 setupWarning
@@ -31,6 +37,11 @@ struct MenuView: View {
         .padding(14)
         .frame(width: 344)
         .background(alignment: .top) { backdrop }
+        .onAppear {
+            permissions.refresh()
+            if !permissions.allGranted || permissions.needsRestart { permissions.startPolling() }
+        }
+        .onDisappear { permissions.stopPolling() }
     }
 
     /// A soft colour glow underneath the glass.
@@ -69,6 +80,90 @@ struct MenuView: View {
             .glassEffect(.regular.interactive(), in: .circle)
             .help("Settings")
         }
+    }
+
+    // MARK: - Permission gate
+
+    /// Shown instead of the record button until macOS has granted everything the
+    /// recorder needs. Each row can trigger the system prompt, or open the exact
+    /// System Settings pane once that prompt has been spent.
+    private var permissionGate: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(
+                permissions.needsRestart ? "Almost there" : "Permissions needed",
+                systemImage: permissions.needsRestart ? "arrow.clockwise.circle.fill" : "lock.fill"
+            )
+            .font(.callout.bold())
+
+            ForEach(Permission.allCases) { permission in
+                permissionRow(permission)
+            }
+
+            if permissions.needsRestart {
+                Text("macOS only hands screen access to a freshly launched app.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Button {
+                    permissions.restart()
+                } label: {
+                    Label("Restart Meeting Noter", systemImage: "arrow.clockwise")
+                        .font(.callout.weight(.medium))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .frame(maxWidth: .infinity)
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .glassEffect(.regular.tint(.indigo).interactive(), in: .capsule)
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.tint(.orange.opacity(0.18)), in: .rect(cornerRadius: 20))
+    }
+
+    @ViewBuilder
+    private func permissionRow(_ permission: Permission) -> some View {
+        let state = permissions.state(of: permission)
+        HStack(alignment: .center, spacing: 10) {
+            Image(systemName: permission.icon)
+                .font(.callout)
+                .frame(width: 20)
+                .foregroundStyle(state == .granted ? AnyShapeStyle(.green) : AnyShapeStyle(.secondary))
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(permission.title).font(.callout.weight(.medium))
+                Text(permission.explanation)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 6)
+
+            switch state {
+            case .granted, .needsRestart:
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.callout)
+                    .foregroundStyle(.green)
+            case .notDetermined:
+                gateButton("Allow") { permissions.request(permission) }
+            case .denied:
+                gateButton("Settings") { permissions.openSettings(for: permission) }
+            }
+        }
+    }
+
+    private func gateButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 5)
+                .foregroundStyle(.white)
+        }
+        .buttonStyle(.plain)
+        .glassEffect(.regular.tint(.indigo).interactive(), in: .capsule)
     }
 
     // MARK: - Record panel

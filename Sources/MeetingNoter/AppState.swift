@@ -76,6 +76,11 @@ final class AppState: ObservableObject {
 
     func startRecording() {
         guard case .idle = phase else { return }
+        // The hotkey reaches here without passing the menu's permission gate.
+        guard PermissionsModel.recordingAllowed else {
+            lastError = "Screen and microphone access are required — open the Meeting Noter menu to grant them."
+            return
+        }
         lastError = nil
         Task {
             guard let folder = try? RecordingStore.newRecordingFolder() else {

@@ -5,6 +5,7 @@ struct MeetingNoterApp: App {
     @StateObject private var state = AppState()
     @StateObject private var updater = UpdaterViewModel()
     @StateObject private var models = ModelDownloader()
+    @StateObject private var permissions = PermissionsModel()
 
     init() {
         Self.runCLIIfNeeded()
@@ -16,6 +17,7 @@ struct MeetingNoterApp: App {
                 .environmentObject(state)
                 .environmentObject(updater)
                 .environmentObject(models)
+                .environmentObject(permissions)
         } label: {
             // While recording, the menu bar shows a timer.
             if state.isRecording {

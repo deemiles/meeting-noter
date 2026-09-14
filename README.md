@@ -52,12 +52,16 @@ cd meeting-noter
 
 ## Permissions
 
-macOS will ask for two things on first use:
+The menu bar popover gates recording behind the two permissions macOS requires, with a button for each:
 
-- **Screen & System Audio Recording** — System Settings → Privacy & Security. **Restart the app after granting it**; a running process does not pick up this permission.
-- **Microphone** — the system prompt appears on the first recording.
+- **Screen & System Audio Recording** — captures the call window and the far end of the conversation
+- **Microphone** — records your own voice as a separate track
 
-If the permission dialog keeps reappearing no matter how many times you approve it, see [Signing and TCC](#signing-and-tcc) below.
+Press **Allow** and the system prompt appears. If the prompt has already been spent — macOS shows the screen-recording one only once per app version — the button becomes **Settings** and opens the exact Privacy pane.
+
+Screen access is read by ScreenCaptureKit when the process starts, so granting it to a running app does nothing until relaunch. The gate detects that case and offers a **Restart Meeting Noter** button rather than leaving you with an app that records empty frames.
+
+Until both are granted the record button is replaced by the gate, and the ⌘⇧R hotkey refuses to start with an explanatory message.
 
 ## How it works
 
@@ -69,6 +73,7 @@ If the permission dialog keeps reappearing no matter how many times you approve 
 | `SummaryFormatter.swift` | Flattens `summary.md` into a message you can paste into a chat. |
 | `Summarizer.swift` | `claude -p` over the transcript → `summary.md`. |
 | `AppState.swift` | Recording state machine, search, launch-at-login. |
+| `Permissions.swift` | TCC state for screen and microphone, prompts, and the relaunch path. |
 | `MenuView.swift` | Liquid Glass UI: `glassEffect`, `GlassEffectContainer`, pulsing record button. |
 | `HotKey.swift` | Carbon `RegisterEventHotKey` — no Accessibility permission required. |
 
