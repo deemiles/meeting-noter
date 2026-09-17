@@ -6,6 +6,27 @@
     <description>Updates for Meeting Noter</description>
     <language>en</language>
     <item>
+      <title>1.4</title>
+      <pubDate>Thu, 17 Sep 2026 12:00:00 +0000</pubDate>
+      <sparkle:version>5</sparkle:version>
+      <sparkle:shortVersionString>1.4</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h3>Fixes transcription hanging on long meetings</h3>
+        <ul>
+          <li><b>Important:</b> a transcription of roughly an hour or more could hang indefinitely. The recording was never at risk — press retry and it transcribes normally.</li>
+          <li>Progress is now shown as a percentage in the menu and a progress bar in the transcript window, instead of an endless spinner</li>
+          <li>A running transcription can be stopped or restarted; previously a wedged one had no escape hatch</li>
+          <li>A run that produces no output for fifteen minutes is cancelled rather than spinning forever</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/deemiles/meeting-noter/releases/download/v1.4.0/MeetingNoter.dmg"
+        length="4169770"
+        type="application/octet-stream"
+        sparkle:edSignature="HesXYJ6q3VXpv3ySLoAahkb+ZL9ez8YJkJHCBov0Xqp2yPOxauvN1syzXMCE/G8QUue/8tNuJvhalelDpltLDg==" />
+    </item>
+    <item>
       <title>1.3</title>
       <pubDate>Tue, 15 Sep 2026 09:00:00 +0000</pubDate>
       <sparkle:version>4</sparkle:version>
