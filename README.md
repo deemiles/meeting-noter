@@ -68,7 +68,7 @@ Until both are granted the record button is replaced by the gate, and the ⌘⇧
 | File | Responsibility |
 | --- | --- |
 | `CallRecorder.swift` | ScreenCaptureKit → `AVAssetWriter`. One `.mov`, 15 fps h264, two AAC audio tracks. Picks the capture filter for Slack, Teams, Meet or the full screen. |
-| `Transcriber.swift` | Per-track normalization → 16 kHz mono WAV → bundled `whisper-cli -oj` → merge by timecode. |
+| `Transcriber.swift` | Per-track normalization → 16 kHz mono WAV → bundled `whisper-cli -oj` → merge by timecode. Reports progress, and can be cancelled. |
 | `ModelDownloader.swift` | Fetches a Whisper model on first launch so no terminal is needed. |
 | `SummaryFormatter.swift` | Flattens `summary.md` into a message you can paste into a chat. |
 | `Summarizer.swift` | `claude -p` over the transcript → `summary.md`. |
@@ -76,6 +76,14 @@ Until both are granted the record button is replaced by the gate, and the ⌘⇧
 | `Permissions.swift` | TCC state for screen and microphone, prompts, and the relaunch path. |
 | `MenuView.swift` | Liquid Glass UI: `glassEffect`, `GlassEffectContainer`, pulsing record button. |
 | `HotKey.swift` | Carbon `RegisterEventHotKey` — no Accessibility permission required. |
+
+### Never read a pipe only after the process exits
+
+The transcriber used to hand `whisper-cli` a `Pipe` and read it from `terminationHandler`. That works until the child outputs more than the pipe buffer — 64 KB on macOS. At that point the child blocks on `write`, so it never exits, so the handler never runs, so nothing ever drains the pipe. A test user's hour-long meeting sat "transcribing" for over a day.
+
+whisper emits roughly 8 bytes per second of speech to stdout, so the ceiling lands somewhere around an hour of dense conversation — long enough that short test recordings never hit it. The fix is to drain the pipe with a `readabilityHandler` while the process runs. `Summarizer` had the same pattern, plus a race where `terminationHandler` was installed *after* `run()`, so a fast-exiting process could hang the caller forever.
+
+Alongside it: `-pp` makes whisper print progress, the menu shows a percentage instead of an unbounded spinner, a run that goes fifteen minutes without output is terminated as stalled, and a transcription in flight can be stopped or restarted from the menu. Previously the retry button only appeared once the status had already changed, so a wedged run had no escape hatch at all.
 
 ### Three things that turned out to matter
 

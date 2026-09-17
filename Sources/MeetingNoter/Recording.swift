@@ -97,9 +97,22 @@ enum RecordingStore {
             // If the app died mid-recording or mid-transcription, let the user retry.
             if meta.status == .transcribing || meta.status == .recording {
                 meta.status = .recorded
+                // The per-track wav and json are deleted by the transcriber's defer, which
+                // never ran if the process was killed. They are pure scratch — a wav for an
+                // hour-long call is well over a hundred megabytes.
+                removeScratchFiles(in: folder)
             }
             result.append(Recording(folder: folder, meta: meta))
         }
         return result.sorted { $0.meta.date > $1.meta.date }
+    }
+
+    /// Intermediate files the transcriber writes next to the recording.
+    private static func removeScratchFiles(in folder: URL) {
+        let names = (try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []
+        for name in names where name.hasPrefix("track-")
+            && (name.hasSuffix(".wav") || name.hasSuffix(".json")) {
+            try? FileManager.default.removeItem(at: folder.appendingPathComponent(name))
+        }
     }
 }

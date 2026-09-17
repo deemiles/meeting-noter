@@ -1,5 +1,34 @@
 import Foundation
 
+/// Drains a pipe on a background queue so a chatty child process cannot block on a
+/// full pipe buffer, and the collected output survives the process exiting.
+private final class PipeCollector: @unchecked Sendable {
+    private let pipe: Pipe
+    private let lock = NSLock()
+    private var data = Data()
+
+    init(_ pipe: Pipe) {
+        self.pipe = pipe
+        pipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty, let self else { return }
+            self.lock.lock(); self.data.append(chunk); self.lock.unlock()
+        }
+    }
+
+    func finish() {
+        pipe.fileHandleForReading.readabilityHandler = nil
+        let rest = pipe.fileHandleForReading.availableData
+        guard !rest.isEmpty else { return }
+        lock.lock(); data.append(rest); lock.unlock()
+    }
+
+    var string: String {
+        lock.lock(); defer { lock.unlock() }
+        return String(data: data, encoding: .utf8) ?? ""
+    }
+}
+
 /// Call summary through the Claude Code CLI (`claude -p`), when it is installed.
 enum Summarizer {
     private(set) static var claudePath: String?
@@ -28,11 +57,11 @@ enum Summarizer {
         process.standardOutput = pipe
         process.standardError = FileHandle.nullDevice
         try? process.run()
+        // Read before waiting: waitUntilExit() on an unread pipe is the same deadlock.
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        let output = String(
-            data: pipe.fileHandleForReading.readDataToEndOfFile(),
-            encoding: .utf8
-        )?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let output = String(data: data, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         if process.terminationStatus == 0, !output.isEmpty, fm.isExecutableFile(atPath: output) {
             claudePath = output
         }
@@ -105,20 +134,30 @@ enum Summarizer {
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
-        try process.run()
-        let summary: String = await withCheckedContinuation { continuation in
+        // Both pipes are drained while the process runs. Reading only after it exits
+        // deadlocks once a child fills the 64 KB pipe buffer, and setting the termination
+        // handler after run() races with a process that exits immediately.
+        let out = PipeCollector(outputPipe)
+        let err = PipeCollector(errorPipe)
+
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             process.terminationHandler = { _ in
-                let data = outputPipe.fileHandleForReading.readDataToEndOfFile()
-                continuation.resume(returning: String(data: data, encoding: .utf8) ?? "")
+                out.finish()
+                err.finish()
+                continuation.resume()
+            }
+            do {
+                try process.run()
+            } catch {
+                out.finish()
+                err.finish()
+                continuation.resume()
             }
         }
 
+        let summary = out.string
         guard process.terminationStatus == 0, !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            let errorOutput = String(
-                data: errorPipe.fileHandleForReading.readDataToEndOfFile(),
-                encoding: .utf8
-            ) ?? ""
-            throw TranscriberError.processFailed("claude", process.terminationStatus, errorOutput)
+            throw TranscriberError.processFailed("claude", process.terminationStatus, err.string)
         }
 
         let summaryURL = folder.appendingPathComponent("summary.md")

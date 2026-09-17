@@ -17,6 +17,7 @@ final class AppState: ObservableObject {
     @Published var elapsedText = ""
     @Published var searchQuery = ""
     @Published var summarizing: Set<String> = []
+    @Published var transcriptionProgress: [String: TranscriptionProgress] = [:]
     @Published var viewingRecording: Recording?
     @Published var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
 
@@ -55,6 +56,8 @@ final class AppState: ObservableObject {
     private var timer: Timer?
     private var hotKey: HotKeyManager?
     private var transcriptCache: [String: String] = [:]
+    /// Running transcriptions, so they can be cancelled or restarted from the menu.
+    private var transcriptionTasks: [String: Task<Void, Never>] = [:]
 
     init() {
         recordings = RecordingStore.loadAll()
@@ -151,7 +154,11 @@ final class AppState: ObservableObject {
             recordings.insert(recording, at: 0)
 
             if meta.status == .recorded {
-                recording = await transcribe(recording, language: recordedLanguage)
+                let task = Task { [weak self] in
+                    _ = await self?.transcribe(recording, language: recordedLanguage)
+                }
+                transcriptionTasks[recording.id] = task
+                await task.value
             }
         }
     }
@@ -165,24 +172,51 @@ final class AppState: ObservableObject {
         updated.meta.errorMessage = nil
         apply(updated)
 
+        let id = recording.id
+        transcriptionProgress[id] = TranscriptionProgress(trackIndex: 0, trackCount: 2, fraction: 0)
+
         do {
             _ = try await Transcriber.transcribe(
                 movie: recording.movieURL,
                 language: language,
                 into: recording.folder
-            )
+            ) { progress in
+                Task { @MainActor in self.transcriptionProgress[id] = progress }
+            }
             updated.meta.status = .done
+        } catch is CancellationError {
+            // Cancelled from the menu — leave it ready to start again rather than "failed".
+            updated.meta.status = .recorded
+            updated.meta.errorMessage = nil
         } catch {
             updated.meta.status = .failed
             updated.meta.errorMessage = error.localizedDescription
         }
+
+        transcriptionProgress[id] = nil
+        transcriptionTasks[id] = nil
         apply(updated)
         return updated
     }
 
+    /// Starts (or restarts) a transcription, replacing one already in flight.
     func retryTranscription(_ recording: Recording) {
         let language = TranscriptLanguage(rawValue: recording.meta.language) ?? self.language
-        Task { await transcribe(recording, language: language) }
+        transcriptionTasks[recording.id]?.cancel()
+        transcriptionTasks[recording.id] = Task { [weak self] in
+            // Give the cancelled run a moment to tear its process down before starting again.
+            try? await Task.sleep(for: .milliseconds(300))
+            await self?.transcribe(recording, language: language)
+        }
+    }
+
+    func cancelTranscription(_ recording: Recording) {
+        transcriptionTasks[recording.id]?.cancel()
+        transcriptionTasks[recording.id] = nil
+    }
+
+    func isTranscribing(_ recording: Recording) -> Bool {
+        recording.meta.status == .transcribing
     }
 
     // MARK: - Summary

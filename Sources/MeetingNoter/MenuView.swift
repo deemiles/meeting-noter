@@ -563,7 +563,16 @@ struct RecordingRow: View {
 
     @ViewBuilder
     private var actions: some View {
-        if recording.meta.status == .failed || recording.meta.status == .recorded {
+        if recording.meta.status == .transcribing {
+            // A wedged run used to be unreachable: the retry button only appeared once the
+            // status had already changed, so there was no way out from the menu.
+            iconButton("stop.circle", help: "Stop transcription") {
+                state.cancelTranscription(recording)
+            }
+            iconButton("arrow.clockwise", help: "Restart transcription") {
+                state.retryTranscription(recording)
+            }
+        } else if recording.meta.status == .failed || recording.meta.status == .recorded {
             iconButton("arrow.clockwise", help: "Transcribe again") {
                 state.retryTranscription(recording)
             }
@@ -630,7 +639,12 @@ struct RecordingRow: View {
         }
         parts.append(recording.meta.language.uppercased())
         switch recording.meta.status {
-        case .transcribing: parts.append("transcribing…")
+        case .transcribing:
+            if let progress = state.transcriptionProgress[recording.id] {
+                parts.append("transcribing \(Int(progress.overall * 100))%")
+            } else {
+                parts.append("transcribing…")
+            }
         case .failed: parts.append(recording.meta.errorMessage ?? "failed")
         case .recorded: parts.append("no transcript")
         case .done where recording.hasSummary: parts.append("summary ready")

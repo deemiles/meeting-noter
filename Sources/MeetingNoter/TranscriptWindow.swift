@@ -157,8 +157,7 @@ struct TranscriptWindowView: View {
                     .textSelection(.enabled)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
-                Text(transcriptPlaceholder(recording))
-                    .foregroundStyle(.secondary)
+                transcriptPlaceholder(recording)
             }
         }
         .padding(16)
@@ -168,11 +167,40 @@ struct TranscriptWindowView: View {
 
     // MARK: - Helpers
 
-    private func transcriptPlaceholder(_ recording: Recording) -> String {
+    @ViewBuilder
+    private func transcriptPlaceholder(_ recording: Recording) -> some View {
         switch recording.meta.status {
-        case .transcribing: return "Transcription in progress…"
-        case .failed: return "Failed: \(recording.meta.errorMessage ?? "unknown")"
-        default: return "No transcript yet."
+        case .transcribing:
+            VStack(alignment: .leading, spacing: 8) {
+                if let progress = state.transcriptionProgress[recording.id] {
+                    ProgressView(value: progress.overall)
+                        .progressViewStyle(.linear)
+                    HStack(spacing: 6) {
+                        Text("\(Int(progress.overall * 100))%")
+                            .font(.callout.monospacedDigit().weight(.medium))
+                        if progress.trackCount > 1 {
+                            Text("track \(min(progress.trackIndex + 1, progress.trackCount)) of \(progress.trackCount)")
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button("Restart") { state.retryTranscription(recording) }
+                            .buttonStyle(.link)
+                        Button("Stop") { state.cancelTranscription(recording) }
+                            .buttonStyle(.link)
+                    }
+                    .font(.caption)
+                } else {
+                    HStack(spacing: 8) {
+                        ProgressView().controlSize(.small)
+                        Text("Starting transcription…").foregroundStyle(.secondary)
+                    }
+                }
+            }
+        case .failed:
+            Text("Failed: \(recording.meta.errorMessage ?? "unknown")")
+                .foregroundStyle(.secondary)
+        default:
+            Text("No transcript yet.").foregroundStyle(.secondary)
         }
     }
 

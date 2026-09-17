@@ -1,10 +1,24 @@
 import Foundation
 import AVFoundation
 
+/// How far along a transcription is, for the menu to show something other than a spinner.
+struct TranscriptionProgress: Equatable, Sendable {
+    var trackIndex: Int
+    var trackCount: Int
+    /// Progress within the current track, 0...1.
+    var fraction: Double
+
+    /// Progress across every track, 0...1.
+    var overall: Double {
+        (Double(trackIndex) + fraction) / Double(max(trackCount, 1))
+    }
+}
+
 enum TranscriberError: LocalizedError {
     case noAudioTracks
     case whisperNotFound
     case modelNotFound
+    case stalled
     case processFailed(String, Int32, String)
 
     var errorDescription: String? {
@@ -15,6 +29,8 @@ enum TranscriberError: LocalizedError {
             return "whisper-cli is missing from the app bundle — try reinstalling Meeting Noter."
         case .modelNotFound:
             return "No Whisper model yet — open the Meeting Noter menu and download one."
+        case .stalled:
+            return "Transcription stopped responding and was cancelled — press retry to start over."
         case .processFailed(let tool, let code, let output):
             return "\(tool) exited with code \(code): \(output.suffix(300))"
         }
@@ -136,7 +152,13 @@ enum Transcriber {
     }
 
     /// Produces the transcript; returns the transcript.txt URL.
-    static func transcribe(movie movieURL: URL, language: TranscriptLanguage, into folder: URL) async throws -> URL {
+    /// `onProgress` fires as whisper works through each track.
+    static func transcribe(
+        movie movieURL: URL,
+        language: TranscriptLanguage,
+        into folder: URL,
+        onProgress: (@Sendable (TranscriptionProgress) -> Void)? = nil
+    ) async throws -> URL {
         guard let whisper = whisperCLI else { throw TranscriberError.whisperNotFound }
         guard let model else { throw TranscriberError.modelNotFound }
 
@@ -152,13 +174,18 @@ enum Transcriber {
         }
 
         var segments: [Segment] = []
+        let trackCount = audioTracks.count
         for (index, track) in audioTracks.enumerated() {
+            try Task.checkCancellation()
+
             let wavURL = folder.appendingPathComponent("track-\(index).wav")
             let jsonURL = folder.appendingPathComponent("track-\(index).json")
             defer {
                 try? FileManager.default.removeItem(at: wavURL)
                 try? FileManager.default.removeItem(at: jsonURL)
             }
+
+            onProgress?(TranscriptionProgress(trackIndex: index, trackCount: trackCount, fraction: 0))
 
             let peak = try exportNormalizedTrack(asset: asset, track: track, to: wavURL)
             if peak < 0.001 { continue } // silence — whisper hallucinates on it
@@ -171,10 +198,16 @@ enum Transcriber {
                 "-oj",
                 "-of", folder.appendingPathComponent("track-\(index)").path,
                 "-np",
-            ])
+                "-pp",   // progress lines, so the menu can show more than a spinner
+            ]) { fraction in
+                onProgress?(TranscriptionProgress(
+                    trackIndex: index, trackCount: trackCount, fraction: fraction
+                ))
+            }
 
             segments += try parseSegments(jsonURL: jsonURL, speaker: speaker(for: index))
         }
+        onProgress?(TranscriptionProgress(trackIndex: trackCount, trackCount: trackCount, fraction: 0))
 
         segments = segments
             .filter { !$0.text.isEmpty && !isHallucination($0.text) }
@@ -335,36 +368,136 @@ enum Transcriber {
 
     // MARK: - Running processes
 
+    /// Thread-safe accumulator: the pipe is drained on a background queue while the
+    /// process runs, and read again once it exits.
+    private final class OutputBuffer: @unchecked Sendable {
+        private let lock = NSLock()
+        private var data = Data()
+
+        func append(_ chunk: Data) {
+            lock.lock(); defer { lock.unlock() }
+            data.append(chunk)
+        }
+
+        var string: String {
+            lock.lock(); defer { lock.unlock() }
+            return String(data: data, encoding: .utf8) ?? ""
+        }
+    }
+
+    /// whisper prints "whisper_print_progress_callback: progress =  36%".
+    private static func parseProgress(_ text: String) -> [Double] {
+        text.components(separatedBy: .newlines).compactMap { line in
+            guard line.contains("progress ="),
+                  let range = line.range(of: #"\d+%"#, options: .regularExpression),
+                  let percent = Double(line[range].dropLast())
+            else { return nil }
+            return percent / 100
+        }
+    }
+
+    /// Kill a run that has produced nothing for this long. whisper is steady about
+    /// printing progress, so silence means it is wedged, not merely slow.
+    private static let stallTimeout: TimeInterval = 15 * 60
+
     @discardableResult
-    private static func run(_ executable: String, _ arguments: [String]) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            let process = Process()
-            process.executableURL = URL(fileURLWithPath: executable)
-            process.arguments = arguments
+    private static func run(
+        _ executable: String,
+        _ arguments: [String],
+        onProgress: (@Sendable (Double) -> Void)? = nil
+    ) async throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
 
-            let pipe = Pipe()
-            process.standardOutput = pipe
-            process.standardError = pipe
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
 
-            process.terminationHandler = { process in
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
-                let output = String(data: data, encoding: .utf8) ?? ""
-                if process.terminationStatus == 0 {
-                    continuation.resume(returning: output)
-                } else {
-                    continuation.resume(throwing: TranscriberError.processFailed(
-                        (executable as NSString).lastPathComponent,
-                        process.terminationStatus,
-                        output
-                    ))
+        let collected = OutputBuffer()
+        let lastOutput = OutputClock()
+
+        // Drain the pipe as the child writes it. Reading only from terminationHandler
+        // deadlocks: once a child fills the 64 KB pipe buffer it blocks on write and never
+        // exits, so the handler never runs. An hour-long meeting was enough to hit that.
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            guard !chunk.isEmpty else { return }
+            collected.append(chunk)
+            lastOutput.touch()
+            if let onProgress, let text = String(data: chunk, encoding: .utf8) {
+                for fraction in parseProgress(text) { onProgress(fraction) }
+            }
+        }
+
+        // Watchdog for a genuinely wedged process, so a stuck run fails loudly
+        // instead of spinning for a day.
+        // A dispatch timer rather than a Timer: this runs on a background task, and a
+        // run-loop timer would depend on the main thread staying responsive.
+        let watchdog = DispatchSource.makeTimerSource(queue: .global(qos: .utility))
+        watchdog.schedule(deadline: .now() + 60, repeating: 60)
+        watchdog.setEventHandler {
+            if lastOutput.secondsSinceLastOutput > stallTimeout, process.isRunning {
+                process.terminate()
+            }
+        }
+        watchdog.resume()
+
+        defer {
+            watchdog.cancel()
+            pipe.fileHandleForReading.readabilityHandler = nil
+        }
+
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<String, Error>) in
+                process.terminationHandler = { process in
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    let rest = pipe.fileHandleForReading.availableData
+                    if !rest.isEmpty { collected.append(rest) }
+                    let output = collected.string
+
+                    if process.terminationStatus == 0 {
+                        continuation.resume(returning: output)
+                    } else if process.terminationReason == .uncaughtSignal {
+                        // terminate() was called: either the task was cancelled or the
+                        // watchdog fired.
+                        let stalled = lastOutput.secondsSinceLastOutput > stallTimeout
+                        continuation.resume(throwing: stalled
+                            ? TranscriberError.stalled
+                            : CancellationError())
+                    } else {
+                        continuation.resume(throwing: TranscriberError.processFailed(
+                            (executable as NSString).lastPathComponent,
+                            process.terminationStatus,
+                            output
+                        ))
+                    }
+                }
+
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(throwing: error)
                 }
             }
+        } onCancel: {
+            process.terminate()
+        }
+    }
 
-            do {
-                try process.run()
-            } catch {
-                continuation.resume(throwing: error)
-            }
+    /// Timestamp of the last byte the child produced, readable from any thread.
+    private final class OutputClock: @unchecked Sendable {
+        private let lock = NSLock()
+        private var last = Date()
+
+        func touch() {
+            lock.lock(); defer { lock.unlock() }
+            last = Date()
+        }
+
+        var secondsSinceLastOutput: TimeInterval {
+            lock.lock(); defer { lock.unlock() }
+            return Date().timeIntervalSince(last)
         }
     }
 }
