@@ -6,6 +6,27 @@
     <description>Updates for Meeting Noter</description>
     <language>en</language>
     <item>
+      <title>1.7</title>
+      <pubDate>Sat, 19 Sep 2026 15:00:00 +0000</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>1.7</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h3>A real window</h3>
+        <ul>
+          <li>Recordings on the left, the selected transcript and summary on the right — replacing the cramped popover and the two separate windows</li>
+          <li>Transcripts are laid out as a conversation: timecodes in their own column, speakers coloured, each turn its own block</li>
+          <li>Settings moved into the window, with permissions and the Claude CLI path shown live</li>
+          <li>The menu bar keeps one-click recording and the three most recent calls</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/deemiles/meeting-noter/releases/download/v1.7.0/MeetingNoter.dmg"
+        length="4335908"
+        type="application/octet-stream"
+        sparkle:edSignature="4pjwKGa+glDLil9mjVBSYIU9SzM98OdyfFthd95/Hlkh8+zzc1INS/QChC4wMem5hdLp2Oup2lHj7VL/OFkxBQ==" />
+    </item>
+    <item>
       <title>1.6</title>
       <pubDate>Sat, 19 Sep 2026 12:00:00 +0000</pubDate>
       <sparkle:version>7</sparkle:version>
