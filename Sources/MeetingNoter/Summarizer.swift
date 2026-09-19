@@ -30,40 +30,89 @@ private final class PipeCollector: @unchecked Sendable {
 }
 
 /// Call summary through the Claude Code CLI (`claude -p`), when it is installed.
+@MainActor
+final class SummarizerAvailability: ObservableObject {
+    /// Observable, unlike a bare static: the menu is often rendered before detection
+    /// finishes, and SwiftUI has no way to notice a plain global changing.
+    @Published private(set) var claudePath: String?
+    @Published private(set) var isDetecting = false
+
+    var isAvailable: Bool { claudePath != nil }
+
+    func detect() async {
+        isDetecting = true
+        claudePath = await Summarizer.locateClaude()
+        Summarizer.claudePath = claudePath
+        isDetecting = false
+    }
+}
+
+/// Call summary through the Claude Code CLI (`claude -p`), when it is installed.
 enum Summarizer {
-    private(set) static var claudePath: String?
+    /// Mirrors SummarizerAvailability for the non-UI code paths.
+    static var claudePath: String?
 
     static var isAvailable: Bool { claudePath != nil }
 
-    /// Look for claude in the usual places, then ask a login shell (a GUI app does not inherit PATH from ~/.zshrc).
-    static func detect() async {
+    /// Looks in the usual install locations, then asks a login shell.
+    static func locateClaude() async -> String? {
         let fm = FileManager.default
         let home = fm.homeDirectoryForCurrentUser.path
         let candidates = [
-            "/opt/homebrew/bin/claude",
-            "/usr/local/bin/claude",
             "\(home)/.local/bin/claude",
             "\(home)/.claude/local/claude",
+            "/opt/homebrew/bin/claude",
+            "/usr/local/bin/claude",
+            "\(home)/.bun/bin/claude",
+            "\(home)/.volta/bin/claude",
+            "\(home)/.npm-global/bin/claude",
+            "\(home)/node_modules/.bin/claude",
         ]
         if let found = candidates.first(where: { fm.isExecutableFile(atPath: $0) }) {
-            claudePath = found
-            return
+            return found
         }
-        // Fallback: ask the login shell.
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/bin/zsh")
-        process.arguments = ["-lc", "command -v claude"]
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = FileHandle.nullDevice
-        try? process.run()
-        // Read before waiting: waitUntilExit() on an unread pipe is the same deadlock.
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        process.waitUntilExit()
-        let output = String(data: data, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if process.terminationStatus == 0, !output.isEmpty, fm.isExecutableFile(atPath: output) {
-            claudePath = output
+        return await shellLookup()
+    }
+
+    /// A GUI app inherits none of the user's shell PATH. `-i` matters: PATH is usually set
+    /// in ~/.zshrc, which a non-interactive login shell never reads.
+    private static func shellLookup() async -> String? {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: "/bin/zsh")
+                process.arguments = ["-ilc", "command -v claude"]
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = FileHandle.nullDevice
+                // An interactive shell must never be able to block on input.
+                process.standardInput = FileHandle.nullDevice
+
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(returning: nil)
+                    return
+                }
+
+                // A heavy ~/.zshrc can be slow; do not let startup wait on it forever.
+                let deadline = DispatchTime.now() + 10
+                DispatchQueue.global().asyncAfter(deadline: deadline) {
+                    if process.isRunning { process.terminate() }
+                }
+
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+
+                let path = String(data: data, encoding: .utf8)?
+                    .components(separatedBy: .newlines)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .last(where: { !$0.isEmpty }) ?? ""
+
+                continuation.resume(
+                    returning: FileManager.default.isExecutableFile(atPath: path) ? path : nil
+                )
+            }
         }
     }
 

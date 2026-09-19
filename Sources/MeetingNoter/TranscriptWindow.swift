@@ -3,6 +3,7 @@ import AppKit
 
 struct TranscriptWindowView: View {
     @EnvironmentObject var state: AppState
+    @EnvironmentObject var summarizer: SummarizerAvailability
     @State private var copiedMessage = false
 
     var body: some View {
@@ -65,7 +66,7 @@ struct TranscriptWindowView: View {
 
                 Spacer()
 
-                if Summarizer.isAvailable, recording.hasTranscript {
+                if summarizer.isAvailable, recording.hasTranscript {
                     if state.summarizing.contains(recording.id) {
                         HStack(spacing: 6) {
                             ProgressView().controlSize(.small)

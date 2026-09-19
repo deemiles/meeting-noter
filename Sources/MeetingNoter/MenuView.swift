@@ -5,6 +5,7 @@ struct MenuView: View {
     @EnvironmentObject var updater: UpdaterViewModel
     @EnvironmentObject var models: ModelDownloader
     @EnvironmentObject var permissions: PermissionsModel
+    @EnvironmentObject var summarizer: SummarizerAvailability
     @Environment(\.openWindow) private var openWindow
     @State private var showSettings = false
 
@@ -24,6 +25,9 @@ struct MenuView: View {
             if let error = state.lastError {
                 errorBanner(error)
             }
+            if let version = updater.installedVersion {
+                updatedBanner(version)
+            }
 
             pickers
 
@@ -38,6 +42,7 @@ struct MenuView: View {
         .frame(width: 344)
         .background(alignment: .top) { backdrop }
         .onAppear {
+            updater.markUpdateSeen()
             permissions.refresh()
             if !permissions.allGranted || permissions.needsRestart { permissions.startPolling() }
         }
@@ -298,6 +303,36 @@ struct MenuView: View {
         .glassEffect(.regular.tint(.indigo.opacity(0.22)), in: .rect(cornerRadius: 14))
     }
 
+    /// Shown once after an update lands. A menu bar app relaunches invisibly, so without
+    /// this there is nothing at all to say the update went through.
+    private func updatedBanner(_ version: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundStyle(.green)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Updated to \(version)").font(.callout.weight(.medium))
+                Text("Running the latest version.")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 4)
+            Button {
+                withAnimation(.spring(duration: 0.3)) { updater.dismissInstalledBanner() }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .padding(5)
+            }
+            .buttonStyle(.plain)
+            .help("Dismiss")
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.tint(.green.opacity(0.18)), in: .rect(cornerRadius: 14))
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
     private func errorBanner(_ error: String) -> some View {
         Label(error, systemImage: "xmark.octagon.fill")
             .font(.caption)
@@ -402,11 +437,27 @@ struct MenuView: View {
             Toggle(isOn: $updater.automaticallyChecksForUpdates) {
                 Label("Check for updates automatically", systemImage: "arrow.down.circle")
             }
-            HStack(spacing: 6) {
-                Image(systemName: Summarizer.isAvailable ? "sparkles" : "sparkles.slash")
-                Text(Summarizer.isAvailable
-                     ? "Summaries via Claude — available"
-                     : "Summaries: Claude CLI not found")
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Image(systemName: summarizer.isAvailable ? "sparkles" : "sparkles.slash")
+                    Text(summarizer.isDetecting
+                         ? "Looking for the Claude CLI…"
+                         : summarizer.isAvailable
+                           ? "Summaries via Claude — available"
+                           : "Summaries: Claude CLI not found")
+                    if !summarizer.isAvailable && !summarizer.isDetecting {
+                        Button("Look again") {
+                            Task { await summarizer.detect() }
+                        }
+                        .buttonStyle(.link)
+                    }
+                }
+                if !summarizer.isAvailable && !summarizer.isDetecting {
+                    Text("Install Claude Code to summarize calls. Everything else works without it.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -532,6 +583,7 @@ struct MenuView: View {
 
 struct RecordingRow: View {
     @EnvironmentObject var state: AppState
+    @EnvironmentObject var summarizer: SummarizerAvailability
     @State private var copiedSummary = false
     let recording: Recording
     let onOpen: () -> Void
@@ -577,7 +629,7 @@ struct RecordingRow: View {
                 state.retryTranscription(recording)
             }
         }
-        if recording.meta.status == .done, Summarizer.isAvailable, !recording.hasSummary {
+        if recording.meta.status == .done, summarizer.isAvailable, !recording.hasSummary {
             if state.summarizing.contains(recording.id) {
                 ProgressView().controlSize(.mini)
             } else {

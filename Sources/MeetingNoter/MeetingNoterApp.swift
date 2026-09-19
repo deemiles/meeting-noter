@@ -6,6 +6,7 @@ struct MeetingNoterApp: App {
     @StateObject private var updater = UpdaterViewModel()
     @StateObject private var models = ModelDownloader()
     @StateObject private var permissions = PermissionsModel()
+    @StateObject private var summarizer = SummarizerAvailability()
 
     init() {
         Self.runCLIIfNeeded()
@@ -18,11 +19,18 @@ struct MeetingNoterApp: App {
                 .environmentObject(updater)
                 .environmentObject(models)
                 .environmentObject(permissions)
+                .environmentObject(summarizer)
+                .task { await summarizer.detect() }
         } label: {
-            // While recording, the menu bar shows a timer.
+            // While recording, the menu bar shows a timer. After an update the icon carries a
+            // checkmark until the menu is opened — a relaunching menu bar app is otherwise
+            // completely silent about having updated, and this needs no notification
+            // permission to be noticed.
             if state.isRecording {
                 Image(systemName: "record.circle.fill")
                 Text(state.elapsedText)
+            } else if updater.showsUpdateBadge {
+                Image(systemName: "waveform.badge.checkmark")
             } else {
                 Image(systemName: "waveform.circle")
             }
@@ -32,6 +40,7 @@ struct MeetingNoterApp: App {
         Window("Transcript — Meeting Noter", id: "viewer") {
             TranscriptWindowView()
                 .environmentObject(state)
+                .environmentObject(summarizer)
         }
         .defaultSize(width: 660, height: 760)
 

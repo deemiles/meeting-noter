@@ -61,7 +61,6 @@ final class AppState: ObservableObject {
 
     init() {
         recordings = RecordingStore.loadAll()
-        Task { await Summarizer.detect() }
         hotKey = HotKeyManager { [weak self] in
             Task { @MainActor in self?.toggleRecording() }
         }
