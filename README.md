@@ -63,6 +63,14 @@ Screen access is read by ScreenCaptureKit when the process starts, so granting i
 
 Until both are granted the record button is replaced by the gate, and the ⌘⇧R hotkey refuses to start with an explanatory message.
 
+## Summaries and Claude Code
+
+Summaries are the only feature with an outside dependency, and it is optional — recording, transcription, speaker labels and search all work without it.
+
+They shell out to the **Claude Code CLI**, which is not the same thing as the Claude desktop app: `/Applications/Claude.app` ships no `claude` binary. If only the desktop app is installed, the setup card in the menu says so explicitly rather than leaving you to wonder where the ✨ button went.
+
+The CLI is found by checking the usual install locations, then asking an interactive login shell (`zsh -ilc`) — interactive matters, since PATH usually lives in `~/.zshrc`, which non-interactive shells never read. When neither works, **Locate…** opens a file picker; the chosen binary is checked with `--version` before it is accepted, so pointing at the wrong file fails loudly instead of silently.
+
 ## How it works
 
 | File | Responsibility |

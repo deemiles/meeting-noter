@@ -1,4 +1,6 @@
 import Foundation
+import SwiftUI
+import AppKit
 
 /// Drains a pipe on a background queue so a chatty child process cannot block on a
 /// full pipe buffer, and the collected output survives the process exiting.
@@ -36,14 +38,74 @@ final class SummarizerAvailability: ObservableObject {
     /// finishes, and SwiftUI has no way to notice a plain global changing.
     @Published private(set) var claudePath: String?
     @Published private(set) var isDetecting = false
+    @Published var error: String?
+
+    /// A path the user picked by hand, for installs no heuristic will guess.
+    @AppStorage("claudeCLIPath") private var manualPath = ""
+    /// This is an optional feature, so the setup card has to be silenceable.
+    @AppStorage("claudeSetupDismissed") var setupDismissed = false
 
     var isAvailable: Bool { claudePath != nil }
+    var needsSetup: Bool { !isAvailable && !isDetecting }
+
+    /// The Claude desktop app is a different product and ships no CLI. Worth saying out
+    /// loud: "I already have Claude installed" is otherwise a reasonable thing to think.
+    var desktopAppInstalled: Bool {
+        let fm = FileManager.default
+        return fm.fileExists(atPath: "/Applications/Claude.app")
+            || fm.fileExists(atPath: NSString(string: "~/Applications/Claude.app").expandingTildeInPath)
+    }
 
     func detect() async {
         isDetecting = true
-        claudePath = await Summarizer.locateClaude()
+        error = nil
+        if !manualPath.isEmpty, FileManager.default.isExecutableFile(atPath: manualPath) {
+            claudePath = manualPath
+        } else {
+            claudePath = await Summarizer.locateClaude()
+        }
         Summarizer.claudePath = claudePath
         isDetecting = false
+    }
+
+    /// Lets the user point at the binary when nothing automatic finds it.
+    func chooseManually() async {
+        let panel = NSOpenPanel()
+        panel.title = "Locate the Claude Code CLI"
+        panel.message = "Select the claude executable. Running `which claude` in a terminal prints its path."
+        panel.prompt = "Use This"
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.showsHiddenFiles = true
+        panel.directoryURL = URL(fileURLWithPath: NSString(string: "~/.local/bin").expandingTildeInPath)
+
+        NSApp.activate(ignoringOtherApps: true)
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        guard FileManager.default.isExecutableFile(atPath: url.path) else {
+            error = "\(url.lastPathComponent) is not executable."
+            return
+        }
+
+        isDetecting = true
+        let verified = await Summarizer.verifyClaude(at: url.path)
+        isDetecting = false
+
+        guard verified else {
+            error = "\(url.lastPathComponent) does not look like the Claude Code CLI."
+            return
+        }
+
+        manualPath = url.path
+        claudePath = url.path
+        Summarizer.claudePath = url.path
+        error = nil
+    }
+
+    func openInstallPage() {
+        guard let url = URL(string: "https://docs.claude.com/en/docs/claude-code/setup") else { return }
+        NSWorkspace.shared.open(url)
     }
 }
 
@@ -72,6 +134,34 @@ enum Summarizer {
             return found
         }
         return await shellLookup()
+    }
+
+    /// Confirms a chosen binary really is Claude Code before trusting it.
+    static func verifyClaude(at path: String) async -> Bool {
+        await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .utility).async {
+                let process = Process()
+                process.executableURL = URL(fileURLWithPath: path)
+                process.arguments = ["--version"]
+                let pipe = Pipe()
+                process.standardOutput = pipe
+                process.standardError = FileHandle.nullDevice
+                process.standardInput = FileHandle.nullDevice
+                do {
+                    try process.run()
+                } catch {
+                    continuation.resume(returning: false)
+                    return
+                }
+                DispatchQueue.global().asyncAfter(deadline: .now() + 10) {
+                    if process.isRunning { process.terminate() }
+                }
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                process.waitUntilExit()
+                let output = (String(data: data, encoding: .utf8) ?? "").lowercased()
+                continuation.resume(returning: output.contains("claude code"))
+            }
+        }
     }
 
     /// A GUI app inherits none of the user's shell PATH. `-i` matters: PATH is usually set

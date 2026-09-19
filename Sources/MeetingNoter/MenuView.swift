@@ -22,6 +22,9 @@ struct MenuView: View {
             if !Transcriber.isReady || models.isDownloading {
                 setupWarning
             }
+            if summarizer.needsSetup && !summarizer.setupDismissed {
+                claudeSetupCard
+            }
             if let error = state.lastError {
                 errorBanner(error)
             }
@@ -246,6 +249,65 @@ struct MenuView: View {
         }
     }
 
+    // MARK: - Claude Code setup
+
+    /// Summaries are the one feature with an outside dependency, and its absence used to
+    /// show up only as a button that quietly was not there.
+    private var claudeSetupCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Label("Summaries need Claude Code", systemImage: "sparkles")
+                    .font(.caption.bold())
+                Spacer()
+                Button {
+                    withAnimation(.spring(duration: 0.3)) { summarizer.setupDismissed = true }
+                } label: {
+                    Image(systemName: "xmark").font(.caption2).padding(4)
+                }
+                .buttonStyle(.plain)
+                .help("Hide — recording and transcription work without it")
+            }
+
+            Text(summarizer.desktopAppInstalled
+                 ? "The Claude desktop app is a different product and does not include the CLI. Everything else here works without it."
+                 : "Recording and transcription work without it. Summaries need the Claude Code command line tool.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: 6) {
+                cardButton("Install…", filled: true) { summarizer.openInstallPage() }
+                cardButton("Locate…") { Task { await summarizer.chooseManually() } }
+                cardButton("Look again") { Task { await summarizer.detect() } }
+                Spacer()
+                if summarizer.isDetecting { ProgressView().controlSize(.mini) }
+            }
+
+            if let error = summarizer.error {
+                Text(error).font(.caption2).foregroundStyle(.red).lineLimit(2)
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .glassEffect(.regular.tint(.purple.opacity(0.16)), in: .rect(cornerRadius: 14))
+        .transition(.opacity.combined(with: .move(edge: .top)))
+    }
+
+    private func cardButton(_ title: String, filled: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(.caption.weight(.medium))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .foregroundStyle(filled ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+        }
+        .buttonStyle(.plain)
+        .glassEffect(
+            filled ? .regular.tint(.purple).interactive() : .regular.interactive(),
+            in: .capsule
+        )
+    }
+
     // MARK: - Warnings
 
     /// Shown until a Whisper model exists on disk. Downloading one is the only setup step,
@@ -446,17 +508,18 @@ struct MenuView: View {
                            ? "Summaries via Claude — available"
                            : "Summaries: Claude CLI not found")
                     if !summarizer.isAvailable && !summarizer.isDetecting {
-                        Button("Look again") {
-                            Task { await summarizer.detect() }
+                        Button("Set up") {
+                            withAnimation(.spring(duration: 0.3)) { summarizer.setupDismissed = false }
                         }
                         .buttonStyle(.link)
                     }
                 }
-                if !summarizer.isAvailable && !summarizer.isDetecting {
-                    Text("Install Claude Code to summarize calls. Everything else works without it.")
+                if let path = summarizer.claudePath {
+                    Text(path)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                        .fixedSize(horizontal: false, vertical: true)
+                        .lineLimit(1)
+                        .truncationMode(.head)
                 }
             }
             .font(.caption)
