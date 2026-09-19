@@ -1,26 +1,60 @@
 import SwiftUI
+import AppKit
+
+/// Closes the main window when the app was started by the login item, and brings it back
+/// when the Dock icon is clicked. SwiftUI opens a Window scene at launch by default; there
+/// is no supported way to open one later from AppKit, so it is opened and then dismissed.
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    /// Set from the App's init, before the delegate callbacks run.
+    static var openWindowAtLaunch = true
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Task { @MainActor in
+            await AppEnvironment.shared.summarizer.detect()
+        }
+        guard Self.openWindowAtLaunch else { return }
+        MainWindowController.shared.show()
+    }
+
+    /// Closing the window must leave the app in the menu bar, not quit it.
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
+        false
+    }
+
+    /// Clicking the Dock icon with no window open brings it back.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag { MainWindowController.shared.show() }
+        return true
+    }
+}
 
 @main
 struct MeetingNoterApp: App {
-    @StateObject private var state = AppState()
-    @StateObject private var updater = UpdaterViewModel()
-    @StateObject private var models = ModelDownloader()
-    @StateObject private var permissions = PermissionsModel()
-    @StateObject private var summarizer = SummarizerAvailability()
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    // Observed rather than owned: AppEnvironment holds them so the window controller can
+    // build its view before any SwiftUI view exists.
+    @ObservedObject private var state = AppEnvironment.shared.state
+    @ObservedObject private var updater = AppEnvironment.shared.updater
+    private var summarizer: SummarizerAvailability { AppEnvironment.shared.summarizer }
 
     init() {
         Self.runCLIIfNeeded()
+        AppDelegate.openWindowAtLaunch = Self.shouldOpenWindowAtLaunch
+    }
+
+    /// Opening the window on a login-item launch would put a window in the user's face
+    /// every morning, which is the opposite of what a menu bar app is for.
+    private static var shouldOpenWindowAtLaunch: Bool {
+        let event = NSAppleEventManager.shared().currentAppleEvent
+        let launchedAsLoginItem = event?.eventID == AEEventID(kAEOpenApplication)
+            && event?.paramDescriptor(forKeyword: AEKeyword(keyAEPropData))?
+                .enumCodeValue == AEEventID(keyAELaunchedAsLogInItem)
+        return !launchedAsLoginItem
     }
 
     var body: some Scene {
         MenuBarExtra {
-            MenuView()
-                .environmentObject(state)
-                .environmentObject(updater)
-                .environmentObject(models)
-                .environmentObject(permissions)
-                .environmentObject(summarizer)
-                .task { await summarizer.detect() }
+            AppEnvironment.shared.inject(MenuView())
         } label: {
             // While recording, the menu bar shows a timer. After an update the icon carries a
             // checkmark until the menu is opened — a relaunching menu bar app is otherwise
@@ -37,18 +71,6 @@ struct MeetingNoterApp: App {
         }
         .menuBarExtraStyle(.window)
 
-        Window("Transcript — Meeting Noter", id: "viewer") {
-            TranscriptWindowView()
-                .environmentObject(state)
-                .environmentObject(summarizer)
-        }
-        .defaultSize(width: 660, height: 760)
-
-        Window("History — Meeting Noter", id: "history") {
-            HistoryWindowView()
-                .environmentObject(state)
-        }
-        .defaultSize(width: 520, height: 640)
     }
 
     /// Headless mode: `MeetingNoter --retranscribe <recording folder> [uk|en|es|de|ru]`.

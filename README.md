@@ -19,7 +19,7 @@ Every meeting-notes tool wants your audio on their servers. This one keeps it on
 - **Five languages** — Ukrainian, English, Spanish, German, Russian. Speaker labels and AI summaries come back in the language the call was held in.
 - **Optional AI summaries** — topics, decisions, action items via the Claude CLI (`summary.md`), plus one-click **Copy notes** that flattens the summary into a chat-ready message for Slack or email.
 - **Global hotkey ⌘⇧R** — start or stop from any app, with a live timer in the menu bar.
-- **Searchable history** — full-text search across every transcript you have ever recorded.
+- **A real window** — recordings on the left, the selected transcript and summary on the right, with full-text search. The menu bar stays for one-click recording.
 - **Headless re-transcription** — `MeetingNoter --retranscribe <folder> [ru|en]`.
 - **Auto-updates** — Sparkle checks in the background and installs in place.
 
@@ -82,7 +82,9 @@ The CLI is found by checking the usual install locations, then asking an interac
 | `Summarizer.swift` | `claude -p` over the transcript → `summary.md`. |
 | `AppState.swift` | Recording state machine, search, launch-at-login. |
 | `Permissions.swift` | TCC state for screen and microphone, prompts, and the relaunch path. |
-| `MenuView.swift` | Liquid Glass UI: `glassEffect`, `GlassEffectContainer`, pulsing record button. |
+| `MainWindow.swift` | The window: sidebar of recordings plus a detail pane. |
+| `MainWindowController.swift` | Owns the NSWindow — an accessory app does not get SwiftUI `Window` scenes presented for it — and flips the Dock icon on and off with it. |
+| `MenuView.swift` | Liquid Glass menu bar popover: `glassEffect`, pulsing record button. |
 | `HotKey.swift` | Carbon `RegisterEventHotKey` — no Accessibility permission required. |
 
 ### Never read a pipe only after the process exits

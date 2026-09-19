@@ -1,31 +1,16 @@
 import SwiftUI
 import AppKit
 
-struct TranscriptWindowView: View {
+/// The right-hand pane of the main window: everything about one recording.
+struct RecordingDetailView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var summarizer: SummarizerAvailability
     @State private var copiedMessage = false
 
-    var body: some View {
-        Group {
-            if let recording = state.viewingRecording {
-                content(recording)
-            } else {
-                placeholder
-            }
-        }
-        .frame(minWidth: 520, minHeight: 480)
-    }
+    let recording: Recording
 
-    private var placeholder: some View {
-        VStack(spacing: 8) {
-            Image(systemName: "doc.text.magnifyingglass")
-                .font(.largeTitle)
-                .foregroundStyle(.tertiary)
-            Text("Pick a recording in the Meeting Noter menu")
-                .foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    var body: some View {
+        content(recording)
     }
 
     private func content(_ recording: Recording) -> some View {

@@ -571,8 +571,7 @@ struct MenuView: View {
                         ForEach(state.filteredRecordings.prefix(20)) { recording in
                             RecordingRow(recording: recording) {
                                 state.viewingRecording = recording
-                                openWindow(id: "viewer")
-                                NSApp.activate(ignoringOtherApps: true)
+                                MainWindowController.shared.show()
                             }
                         }
                         if state.filteredRecordings.isEmpty {
@@ -626,10 +625,9 @@ struct MenuView: View {
     private var footer: some View {
         HStack {
             Button {
-                openWindow(id: "history")
-                NSApp.activate(ignoringOtherApps: true)
+                MainWindowController.shared.show()
             } label: {
-                Label("Full history (\(state.recordings.count))", systemImage: "clock.arrow.circlepath")
+                Label("Open Meeting Noter", systemImage: "macwindow")
             }
             .buttonStyle(.link)
             Spacer()
