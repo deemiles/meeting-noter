@@ -23,6 +23,9 @@ final class MainWindowController: NSObject, NSWindowDelegate {
             defer: false
         )
         window.title = "Meeting Noter"
+        // The title is shown in the Dock and window menu, but drawing it over the detail
+        // pane just leaves a band of dead space above the content.
+        window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
         window.isReleasedWhenClosed = false
         window.minSize = NSSize(width: 860, height: 560)

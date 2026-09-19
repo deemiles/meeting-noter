@@ -6,11 +6,9 @@ struct MenuView: View {
     @EnvironmentObject var models: ModelDownloader
     @EnvironmentObject var permissions: PermissionsModel
     @EnvironmentObject var summarizer: SummarizerAvailability
-    @Environment(\.openWindow) private var openWindow
-    @State private var showSettings = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             header
 
             if permissions.allGranted && !permissions.needsRestart {
@@ -33,16 +31,11 @@ struct MenuView: View {
             }
 
             pickers
-
-            if showSettings {
-                settings
-            }
-
-            recordingsSection
+            recentSection
             footer
         }
         .padding(14)
-        .frame(width: 344)
+        .frame(width: 320)
         .background(alignment: .top) { backdrop }
         .onAppear {
             updater.markUpdateSeen()
@@ -74,19 +67,16 @@ struct MenuView: View {
                 .font(.title2)
                 .foregroundStyle(state.isRecording ? AnyShapeStyle(.red) : AnyShapeStyle(.tint))
                 .symbolEffect(.pulse, isActive: state.isRecording)
-            Text("Meeting Noter")
-                .font(.headline)
+            Text("Meeting Noter").font(.headline)
             Spacer()
             Button {
-                withAnimation(.spring(duration: 0.3)) { showSettings.toggle() }
+                MainWindowController.shared.show()
             } label: {
-                Image(systemName: "gearshape")
-                    .font(.callout)
-                    .padding(6)
+                Image(systemName: "macwindow").font(.callout).padding(6)
             }
             .buttonStyle(.plain)
             .glassEffect(.regular.interactive(), in: .circle)
-            .help("Settings")
+            .help("Open the main window")
         }
     }
 
@@ -480,144 +470,24 @@ struct MenuView: View {
         )
     }
 
-    // MARK: - Settings
+    // MARK: - Recent
 
-    private var settings: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Toggle(isOn: Binding(
-                get: { state.soundsEnabled },
-                set: { state.soundsEnabled = $0 }
-            )) {
-                Label("Start and stop sounds", systemImage: "speaker.wave.2")
-            }
-            Toggle(isOn: Binding(
-                get: { state.launchAtLogin },
-                set: { state.setLaunchAtLogin($0) }
-            )) {
-                Label("Launch at login", systemImage: "power")
-            }
-            Toggle(isOn: $updater.automaticallyChecksForUpdates) {
-                Label("Check for updates automatically", systemImage: "arrow.down.circle")
-            }
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(spacing: 6) {
-                    Image(systemName: summarizer.isAvailable ? "sparkles" : "sparkles.slash")
-                    Text(summarizer.isDetecting
-                         ? "Looking for the Claude CLI…"
-                         : summarizer.isAvailable
-                           ? "Summaries via Claude — available"
-                           : "Summaries: Claude CLI not found")
-                    if !summarizer.isAvailable && !summarizer.isDetecting {
-                        Button("Set up") {
-                            withAnimation(.spring(duration: 0.3)) { summarizer.setupDismissed = false }
-                        }
-                        .buttonStyle(.link)
-                    }
-                }
-                if let path = summarizer.claudePath {
-                    Text(path)
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.head)
-                }
-            }
-            .font(.caption)
-            .foregroundStyle(.secondary)
-
-            HStack(spacing: 6) {
-                Button("Check for Updates…") { updater.checkForUpdates() }
-                    .buttonStyle(.link)
-                    .disabled(!updater.canCheckForUpdates)
-                Spacer()
-                Text("v\(updater.versionText)")
-                    .foregroundStyle(.tertiary)
-            }
-            .font(.caption)
-        }
-        .font(.callout)
-        .toggleStyle(.switch)
-        .controlSize(.mini)
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(.regular, in: .rect(cornerRadius: 14))
-        .transition(.opacity.combined(with: .move(edge: .top)))
-    }
-
-    // MARK: - Recordings
-
+    /// Three most recent calls. The window is where the whole library lives.
     @ViewBuilder
-    private var recordingsSection: some View {
-        if state.recordings.isEmpty {
-            HStack {
-                Spacer()
-                VStack(spacing: 4) {
-                    Image(systemName: "tray")
-                        .font(.title3)
-                        .foregroundStyle(.tertiary)
-                    Text("No recordings yet")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(.vertical, 10)
-        } else {
-            VStack(alignment: .leading, spacing: 8) {
-                searchField
-
-                ScrollView {
-                    VStack(spacing: 8) {
-                        ForEach(state.filteredRecordings.prefix(20)) { recording in
-                            RecordingRow(recording: recording) {
-                                state.viewingRecording = recording
-                                MainWindowController.shared.show()
-                            }
-                        }
-                        if state.filteredRecordings.isEmpty {
-                            Text("Nothing found")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .padding(.vertical, 8)
-                        }
+    private var recentSection: some View {
+        if !state.recordings.isEmpty {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Recent")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                ForEach(state.recordings.prefix(3)) { recording in
+                    RecordingRow(recording: recording) {
+                        state.viewingRecording = recording
+                        MainWindowController.shared.show()
                     }
                 }
-                // A ScrollView is infinitely flexible, and the popover sizes itself to its
-                // content — together that collapses the list to zero height. Give it an
-                // explicit height derived from the row count instead.
-                .frame(height: listHeight)
             }
         }
-    }
-
-    /// Height for the recordings list: one row is ~62pt, capped so the menu stays compact.
-    private var listHeight: CGFloat {
-        let rows = max(1, min(state.filteredRecordings.count, 4))
-        return min(CGFloat(rows) * 62, 250)
-    }
-
-    private var searchField: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-            TextField("Search transcripts…", text: $state.searchQuery)
-                .textFieldStyle(.plain)
-                .font(.callout)
-            if !state.searchQuery.isEmpty {
-                Button {
-                    state.searchQuery = ""
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .glassEffect(.regular, in: .capsule)
     }
 
     // MARK: - Footer
@@ -627,12 +497,10 @@ struct MenuView: View {
             Button {
                 MainWindowController.shared.show()
             } label: {
-                Label("Open Meeting Noter", systemImage: "macwindow")
+                Label("All recordings (\(state.recordings.count))", systemImage: "macwindow")
             }
             .buttonStyle(.link)
             Spacer()
-            Button("Folder") { state.openBaseFolder() }
-                .buttonStyle(.link)
             Button("Quit") { NSApp.terminate(nil) }
                 .buttonStyle(.link)
         }
