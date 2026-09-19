@@ -6,6 +6,26 @@
     <description>Updates for Meeting Noter</description>
     <language>en</language>
     <item>
+      <title>1.6</title>
+      <pubDate>Sat, 19 Sep 2026 12:00:00 +0000</pubDate>
+      <sparkle:version>7</sparkle:version>
+      <sparkle:shortVersionString>1.6</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h3>Explains what summaries need, and how to point at it</h3>
+        <ul>
+          <li>A setup card in the menu explains when the Claude Code CLI is missing, instead of quietly hiding the summarize button</li>
+          <li>The Claude desktop app is not the CLI — if only the app is installed, the card says so by name</li>
+          <li><b>Locate…</b> lets you pick the binary yourself; it is verified with --version before being accepted, and remembered</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/deemiles/meeting-noter/releases/download/v1.6.0/MeetingNoter.dmg"
+        length="4224074"
+        type="application/octet-stream"
+        sparkle:edSignature="3wmzCJmAdKzEGfjSyPKZnEd4+mRIULgB2kQvX+Z/evyClTmMcS+AT9EczOX741VLtan+tGXpYybVJItJ3R2RBg==" />
+    </item>
+    <item>
       <title>1.5</title>
       <pubDate>Sat, 19 Sep 2026 10:00:00 +0000</pubDate>
       <sparkle:version>6</sparkle:version>
