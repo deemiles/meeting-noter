@@ -6,6 +6,26 @@
     <description>Updates for Meeting Noter</description>
     <language>en</language>
     <item>
+      <title>1.5</title>
+      <pubDate>Sat, 19 Sep 2026 10:00:00 +0000</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>1.5</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h3>Finds the Claude CLI, and says when it has updated</h3>
+        <ul>
+          <li>The summarize button was missing for anyone whose PATH lives in ~/.zshrc — the lookup used a non-interactive shell, which never reads that file</li>
+          <li>Installing an update used to be completely silent: the menu bar icon now carries a checkmark and the menu shows what version you are on</li>
+          <li>Settings explains when the Claude CLI is missing, with a button to look again after installing it</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/deemiles/meeting-noter/releases/download/v1.5.0/MeetingNoter.dmg"
+        length="4198588"
+        type="application/octet-stream"
+        sparkle:edSignature="+dbys4aZ6R9kKf1SAKZud5tbsP/qG94AekOO7RD6ft9a8/FIphO4hvSElrzq6MnrRnxfqWzVcAswvsQrAE4mDQ==" />
+    </item>
+    <item>
       <title>1.4</title>
       <pubDate>Thu, 17 Sep 2026 12:00:00 +0000</pubDate>
       <sparkle:version>5</sparkle:version>
