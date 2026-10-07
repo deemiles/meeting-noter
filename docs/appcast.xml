@@ -6,6 +6,25 @@
     <description>Updates for Meeting Noter</description>
     <language>en</language>
     <item>
+      <title>1.8</title>
+      <pubDate>Tue, 07 Oct 2026 16:00:00 +0000</pubDate>
+      <sparkle:version>9</sparkle:version>
+      <sparkle:shortVersionString>1.8</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <h3>Telegram calls</h3>
+        <ul>
+          <li>Telegram joins Slack, Microsoft Teams, Google Meet and the full screen as a capture source</li>
+          <li>Works with the native macOS client and the desktop build; an app with a call window on screen wins over one merely running</li>
+        </ul>
+      ]]></description>
+      <enclosure
+        url="https://github.com/deemiles/meeting-noter/releases/download/v1.8.0/MeetingNoter.dmg"
+        length="4344025"
+        type="application/octet-stream"
+        sparkle:edSignature="J9vWYM01iiLIuBoECcBozvRpcenWhjJcnOYygr4Tqu0XN0u+AAvZlFMWYJXF+GyooFCIDYvHHvZ4nP3rTOl/Dw==" />
+    </item>
+    <item>
       <title>1.7</title>
       <pubDate>Sat, 19 Sep 2026 15:00:00 +0000</pubDate>
       <sparkle:version>8</sparkle:version>
