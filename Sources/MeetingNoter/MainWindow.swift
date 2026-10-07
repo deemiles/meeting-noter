@@ -357,16 +357,43 @@ private struct RecordPanel: View {
         .animation(.spring(duration: 0.3), value: state.isRecording)
     }
 
+    /// Five titles need 311pt of segmented control and the sidebar has 268. The four app
+    /// sources sit in a 2x2; "Screen" gets its own row because it is the catch-all, not a
+    /// fifth app.
     private var sourcePicker: some View {
-        Picker("", selection: Binding(get: { state.source }, set: { state.source = $0 })) {
-            ForEach(CaptureSource.allCases) { source in
-                Text(source.title).tag(source)
+        VStack(spacing: 6) {
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
+                spacing: 6
+            ) {
+                ForEach(CaptureSource.allCases.filter { $0 != .fullScreen }) { source in
+                    sourceChip(source)
+                }
             }
+            sourceChip(.fullScreen)
         }
-        .pickerStyle(.segmented)
-        .labelsHidden()
         .disabled(state.isRecording)
         .opacity(state.isRecording ? 0.5 : 1)
+    }
+
+    private func sourceChip(_ source: CaptureSource) -> some View {
+        let selected = state.source == source
+        return Button {
+            withAnimation(.spring(duration: 0.25)) { state.source = source }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: source.icon).font(.caption)
+                Text(source.title).font(.callout)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .foregroundStyle(selected ? AnyShapeStyle(.white) : AnyShapeStyle(.primary))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .background(selected ? AnyShapeStyle(Color.indigo) : AnyShapeStyle(.clear), in: Capsule())
+        .glassEffect(.regular.interactive(), in: .capsule)
     }
 
     private var permissionNotice: some View {

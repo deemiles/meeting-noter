@@ -14,7 +14,7 @@ Every meeting-notes tool wants your audio on their servers. This one keeps it on
 
 ## Features
 
-- **Records the call, not your whole desktop** — pick Slack, Microsoft Teams, a Google Meet tab, or the full screen. ScreenCaptureKit filters by application, so your other windows stay out of the video. Teams works both as the native client and as a browser tab.
+- **Records the call, not your whole desktop** — pick Slack, Microsoft Teams, Telegram, a Google Meet tab, or the full screen. ScreenCaptureKit filters by application, so your other windows stay out of the video. Teams works both as the native client and as a browser tab.
 - **Speaker separation without diarization** — the mic and the system audio are captured as two distinct tracks, transcribed separately, and merged by timecode. Lines come out labelled `Me` / `Them`.
 - **Five languages** — Ukrainian, English, Spanish, German, Russian. Speaker labels and AI summaries come back in the language the call was held in.
 - **Optional AI summaries** — topics, decisions, action items via the Claude CLI (`summary.md`), plus one-click **Copy notes** that flattens the summary into a chat-ready message for Slack or email.
@@ -75,7 +75,7 @@ The CLI is found by checking the usual install locations, then asking an interac
 
 | File | Responsibility |
 | --- | --- |
-| `CallRecorder.swift` | ScreenCaptureKit → `AVAssetWriter`. One `.mov`, 15 fps h264, two AAC audio tracks. Picks the capture filter for Slack, Teams, Meet or the full screen. |
+| `CallRecorder.swift` | ScreenCaptureKit → `AVAssetWriter`. One `.mov`, 15 fps h264, two AAC audio tracks. Picks the capture filter for Slack, Teams, Telegram, Meet or the full screen. |
 | `Transcriber.swift` | Per-track normalization → 16 kHz mono WAV → bundled `whisper-cli -oj` → merge by timecode. Reports progress, and can be cancelled. |
 | `ModelDownloader.swift` | Fetches a Whisper model on first launch so no terminal is needed. |
 | `SummaryFormatter.swift` | Flattens `summary.md` into a message you can paste into a chat. |

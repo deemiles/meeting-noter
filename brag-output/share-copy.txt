@@ -1,0 +1,3 @@
+Every meeting-notes tool starts by asking you to upload your audio. Meeting Noter never sends it anywhere — whisper.cpp is compiled into the app, so your calls are transcribed on your own Mac and stay there. Two separate tracks in, labelled transcript out, summary ready to paste.
+
+Free and open source: deemiles.github.io/meeting-noter

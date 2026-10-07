@@ -7,6 +7,7 @@ enum CaptureSource: String, CaseIterable, Identifiable {
     case slack
     case teams
     case meet
+    case telegram
     case fullScreen
 
     var id: String { rawValue }
@@ -16,6 +17,7 @@ enum CaptureSource: String, CaseIterable, Identifiable {
         case .slack: return "Slack"
         case .teams: return "Teams"
         case .meet: return "Meet"
+        case .telegram: return "Telegram"
         case .fullScreen: return "Screen"
         }
     }
@@ -25,6 +27,7 @@ enum CaptureSource: String, CaseIterable, Identifiable {
         case .slack: return "number.square.fill"
         case .teams: return "person.2.fill"
         case .meet: return "video.square.fill"
+        case .telegram: return "paperplane.fill"
         case .fullScreen: return "rectangle.inset.filled"
         }
     }
@@ -34,6 +37,7 @@ enum RecorderError: LocalizedError {
     case slackNotRunning
     case teamsNotFound
     case meetNotFound
+    case telegramNotRunning
     case noDisplay
     case writerFailed(String)
 
@@ -45,6 +49,8 @@ enum RecorderError: LocalizedError {
             return "Microsoft Teams isn't running and no Teams tab is open — start the meeting and try again."
         case .meetNotFound:
             return "No Google Meet tab found in any browser — open the meeting and try again."
+        case .telegramNotRunning:
+            return "Telegram isn't running — open it and start the call, then try again."
         case .noDisplay:
             return "No display available for recording."
         case .writerFailed(let message):
@@ -201,6 +207,21 @@ final class CallRecorder: NSObject, SCStreamOutput, SCStreamDelegate, @unchecked
             }?.owningApplication
             guard let teamsBrowser else { throw RecorderError.teamsNotFound }
             return try appFilter(for: teamsBrowser, content: content)
+
+        case .telegram:
+            // Telegram ships under several bundle ids — the native macOS client
+            // (ru.keepcoder.Telegram) and the Qt desktop build among them — so match on the
+            // name rather than enumerating ids that would go stale. A call opens its own
+            // window, so prefer an app that actually has one on screen.
+            let telegram = content.windows.first { window in
+                guard window.isOnScreen, let app = window.owningApplication else { return false }
+                return app.bundleIdentifier.lowercased().contains("telegram")
+            }?.owningApplication
+                ?? content.applications.first {
+                    $0.bundleIdentifier.lowercased().contains("telegram")
+                }
+            guard let telegram else { throw RecorderError.telegramNotRunning }
+            return try appFilter(for: telegram, content: content)
 
         case .meet:
             // A Meet tab title looks like "Meet – abc-defg-hij".

@@ -11,3 +11,6 @@ dist/
 # Xcode
 *.xcuserstate
 xcuserdata/
+
+# brag intermediates (630 frames + stems)
+brag-output/work/

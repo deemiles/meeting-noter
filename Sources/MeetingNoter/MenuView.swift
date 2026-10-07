@@ -401,16 +401,23 @@ struct MenuView: View {
         GlassEffectContainer(spacing: 10) {
             VStack(alignment: .leading, spacing: 8) {
                 languageMenu
-                // Four sources no longer fit on one row (319pt of chips in a 316pt menu),
-                // and a 2x2 grid leaves room for more later.
-                LazyVGrid(
-                    columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
-                    spacing: 6
-                ) {
-                    ForEach(CaptureSource.allCases) { source in
-                        chip(icon: source.icon, title: source.title, isSelected: state.source == source) {
-                            state.source = source
+                // The four app sources share a 2x2; "Screen" takes its own row, since it is
+                // the catch-all rather than a fifth app.
+                VStack(spacing: 6) {
+                    LazyVGrid(
+                        columns: [GridItem(.flexible(), spacing: 6), GridItem(.flexible(), spacing: 6)],
+                        spacing: 6
+                    ) {
+                        ForEach(CaptureSource.allCases.filter { $0 != .fullScreen }) { source in
+                            chip(icon: source.icon, title: source.title, isSelected: state.source == source) {
+                                state.source = source
+                            }
                         }
+                    }
+                    chip(icon: CaptureSource.fullScreen.icon,
+                         title: CaptureSource.fullScreen.title,
+                         isSelected: state.source == .fullScreen) {
+                        state.source = .fullScreen
                     }
                 }
             }
