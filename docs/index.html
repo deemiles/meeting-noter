@@ -77,6 +77,10 @@ h1{
 .btn-ghost{background:var(--glass);border-color:var(--stroke);color:var(--ink);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
 .btn-ghost:hover{transform:translateY(-2px);background:rgba(255,255,255,.1)}
 .subcta{font-size:13.5px;color:var(--dim);line-height:1.9}
+.phbadge{display:inline-block;margin:4px 0 16px;line-height:0;border-radius:10px;
+  transition:transform .22s cubic-bezier(.2,.9,.3,1.4),filter .22s}
+.phbadge:hover{transform:translateY(-2px);filter:brightness(1.08)}
+.phbadge img{display:block;width:250px;height:54px}
 .subcta code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;color:var(--muted)}
 
 /* ---------- hero stage ---------- */
@@ -256,6 +260,13 @@ footer a:hover{color:var(--ink)}
         View source
       </a>
     </div>
+    <a class="phbadge" href="https://www.producthunt.com/products/meeting-noter?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-meeting-noter"
+       target="_blank" rel="noopener noreferrer">
+      <img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1272920&amp;theme=dark"
+           alt="Meeting Noter — On-device meeting notes for Slack, Teams, Meet and Telegram | Product Hunt"
+           width="250" height="54">
+    </a>
+
     <p class="subcta">Free and open source · macOS 26+ · notarized by Apple<br>Ukrainian · English · Español · Deutsch · Русский</p>
 
     <div class="glass stage" id="stage">
