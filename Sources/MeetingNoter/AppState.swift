@@ -17,6 +17,8 @@ final class AppState: ObservableObject {
     @Published var elapsedText = ""
     @Published var searchQuery = ""
     @Published var summarizing: Set<String> = []
+    /// The summary as it was before the last Claude edit, per recording, for one-step undo.
+    @Published var summaryBeforeEdit: [String: String] = [:]
     @Published var transcriptionProgress: [String: TranscriptionProgress] = [:]
     @Published var viewingRecording: Recording?
     @Published var launchAtLogin: Bool = SMAppService.mainApp.status == .enabled
@@ -223,6 +225,7 @@ final class AppState: ObservableObject {
     func generateSummary(_ recording: Recording) {
         guard !summarizing.contains(recording.id), recording.hasTranscript else { return }
         summarizing.insert(recording.id)
+        summaryBeforeEdit[recording.id] = nil
         let language = TranscriptLanguage(rawValue: recording.meta.language) ?? self.language
         Task {
             do {
@@ -237,6 +240,38 @@ final class AppState: ObservableObject {
             summarizing.remove(recording.id)
             refreshViewer(recording)
         }
+    }
+
+    /// Asks Claude to rewrite the summary following a free-form instruction.
+    func reviseSummary(_ recording: Recording, request: String) {
+        let request = request.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !request.isEmpty, !summarizing.contains(recording.id),
+              let previous = summaryText(for: recording) else { return }
+        summarizing.insert(recording.id)
+        Task {
+            do {
+                try await Summarizer.revise(
+                    summaryURL: recording.summaryURL,
+                    transcriptURL: recording.transcriptURL,
+                    request: request
+                )
+                summaryBeforeEdit[recording.id] = previous
+            } catch {
+                lastError = error.localizedDescription
+            }
+            summarizing.remove(recording.id)
+            refreshViewer(recording)
+        }
+    }
+
+    func undoSummaryEdit(_ recording: Recording) {
+        guard let previous = summaryBeforeEdit.removeValue(forKey: recording.id) else { return }
+        do {
+            try previous.write(to: recording.summaryURL, atomically: true, encoding: .utf8)
+        } catch {
+            lastError = error.localizedDescription
+        }
+        refreshViewer(recording)
     }
 
     // MARK: - List

@@ -6,6 +6,8 @@ struct RecordingDetailView: View {
     @EnvironmentObject var state: AppState
     @EnvironmentObject var summarizer: SummarizerAvailability
     @State private var copied: Copied?
+    @State private var editRequest = ""
+    @FocusState private var editFocused: Bool
 
     let recording: Recording
 
@@ -16,10 +18,12 @@ struct RecordingDetailView: View {
             VStack(alignment: .leading, spacing: 18) {
                 header
 
-                if state.summarizing.contains(recording.id) {
-                    thinkingCard
-                } else if let summary = state.summaryText(for: recording) {
+                // An existing summary stays on screen while Claude edits it, so the user
+                // can still read what they are asking to change.
+                if let summary = state.summaryText(for: recording) {
                     summaryCard(summary)
+                } else if state.summarizing.contains(recording.id) {
+                    thinkingCard
                 } else if recording.hasTranscript, summarizer.isAvailable {
                     summaryInvite
                 }
@@ -33,6 +37,7 @@ struct RecordingDetailView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(detailBackground)
+        .onChange(of: recording.id) { editRequest = "" }
     }
 
     private var detailBackground: some View {
@@ -153,7 +158,68 @@ struct RecordingDetailView: View {
     private func summaryCard(_ summary: String) -> some View {
         card(title: "Summary", icon: "sparkles", tint: .purple) {
             SummaryBody(text: summary)
+                .opacity(state.summarizing.contains(recording.id) ? 0.45 : 1)
+            if summarizer.isAvailable {
+                summaryEditor
+            }
         }
+    }
+
+    /// A free-form prompt to Claude for reshaping the summary: "shorter", "add the
+    /// budget numbers", "translate to English", whatever the user needs.
+    private var summaryEditor: some View {
+        let busy = state.summarizing.contains(recording.id)
+        let canSend = !busy && !editRequest.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .bottom, spacing: 8) {
+                TextField(
+                    busy ? "Claude is working on the summary…" : "Ask Claude to change the summary…",
+                    text: $editRequest,
+                    axis: .vertical
+                )
+                .textFieldStyle(.plain)
+                .lineLimit(1...6)
+                .focused($editFocused)
+                .disabled(busy)
+                .onSubmit(sendEdit)
+
+                if busy {
+                    ProgressView().controlSize(.small)
+                        .frame(width: 22, height: 22)
+                } else {
+                    Button(action: sendEdit) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(canSend ? AnyShapeStyle(.purple) : AnyShapeStyle(.tertiary))
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!canSend)
+                    .help("Send to Claude (Return)")
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .glassEffect(.regular, in: .rect(cornerRadius: 14))
+
+            if state.summaryBeforeEdit[recording.id] != nil, !busy {
+                Button {
+                    state.undoSummaryEdit(recording)
+                } label: {
+                    Label("Undo last edit", systemImage: "arrow.uturn.backward")
+                        .font(.caption)
+                }
+                .buttonStyle(.link)
+            }
+        }
+        .padding(.top, 6)
+    }
+
+    private func sendEdit() {
+        let request = editRequest.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !request.isEmpty, !state.summarizing.contains(recording.id) else { return }
+        state.reviseSummary(recording, request: request)
+        editRequest = ""
     }
 
     // MARK: - Transcript

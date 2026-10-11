@@ -263,8 +263,45 @@ enum Summarizer {
             Не пересказывай дословно, только суть.
             """
         }
-        let prompt = instruction + "\n\n" + transcript
+        let summary = try await runClaude(claudePath, prompt: instruction + "\n\n" + transcript)
+        let summaryURL = folder.appendingPathComponent("summary.md")
+        try summary.write(to: summaryURL, atomically: true, encoding: .utf8)
+        return summaryURL
+    }
 
+    /// Rewrites an existing summary following a free-form request from the user. The
+    /// transcript goes along so Claude can add things the first pass left out.
+    static func revise(summaryURL: URL, transcriptURL: URL, request: String) async throws {
+        guard let claudePath else {
+            throw TranscriberError.processFailed("claude", -1, "Claude CLI not found")
+        }
+        let summary = try String(contentsOf: summaryURL, encoding: .utf8)
+        let transcript = (try? String(contentsOf: transcriptURL, encoding: .utf8)) ?? ""
+
+        let prompt = """
+        You are editing the markdown summary of a work call. Apply the user's request to the \
+        current summary and reply with the complete updated summary only: no preamble, no \
+        commentary, no code fences. Keep the summary's language and structure unless the \
+        request asks otherwise. Use the transcript as the source of truth for facts.
+
+        <request>
+        \(request)
+        </request>
+
+        <current_summary>
+        \(summary)
+        </current_summary>
+
+        <transcript>
+        \(transcript)
+        </transcript>
+        """
+        let revised = try await runClaude(claudePath, prompt: prompt)
+        try revised.write(to: summaryURL, atomically: true, encoding: .utf8)
+    }
+
+    /// Runs `claude -p` and returns its stdout, throwing on a failure or an empty reply.
+    private static func runClaude(_ claudePath: String, prompt: String) async throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: claudePath)
         process.arguments = ["-p", prompt, "--output-format", "text"]
@@ -272,6 +309,8 @@ enum Summarizer {
         let errorPipe = Pipe()
         process.standardOutput = outputPipe
         process.standardError = errorPipe
+        // Without this the CLI waits a few seconds for stdin data that never comes.
+        process.standardInput = FileHandle.nullDevice
 
         // Both pipes are drained while the process runs. Reading only after it exits
         // deadlocks once a child fills the 64 KB pipe buffer, and setting the termination
@@ -294,13 +333,10 @@ enum Summarizer {
             }
         }
 
-        let summary = out.string
-        guard process.terminationStatus == 0, !summary.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        let output = out.string
+        guard process.terminationStatus == 0, !output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw TranscriberError.processFailed("claude", process.terminationStatus, err.string)
         }
-
-        let summaryURL = folder.appendingPathComponent("summary.md")
-        try summary.write(to: summaryURL, atomically: true, encoding: .utf8)
-        return summaryURL
+        return output
     }
 }
