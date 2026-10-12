@@ -228,6 +228,7 @@ struct RecordingDetailView: View {
         card(title: "Transcript", icon: "text.alignleft", tint: nil) {
             if recording.hasTranscript {
                 TranscriptBody(text: state.transcriptText(for: recording))
+                    .equatable()
             } else {
                 transcriptPlaceholder
             }
@@ -293,10 +294,13 @@ struct RecordingDetailView: View {
         }
         .padding(18)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(
-            tint.map { .regular.tint($0.opacity(0.10)) } ?? .regular,
-            in: .rect(cornerRadius: 18)
-        )
+        // A flat fill, not glass: Liquid Glass re-samples the backdrop under the whole
+        // card every frame, and a long transcript card made scrolling stutter.
+        .background {
+            let shape = RoundedRectangle(cornerRadius: 18, style: .continuous)
+            shape.fill(tint.map { $0.opacity(0.07) } ?? Color.primary.opacity(0.035))
+                .overlay(shape.strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
+        }
     }
 
     private func chip(icon: String, text: String, tint: Color? = nil) -> some View {
@@ -407,8 +411,17 @@ private struct SummaryBody: View {
 
 /// A transcript is `[mm:ss] Speaker: line`. Rendering it as one blob wastes the structure
 /// that the two-track pipeline worked to produce.
-private struct TranscriptBody: View {
+private struct TranscriptBody: View, Equatable {
     let text: String
+    /// Parsed once per transcript, not on every redraw of the window.
+    private let lines: [Line]
+
+    init(text: String) {
+        self.text = text
+        self.lines = Self.parse(text)
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.text == rhs.text }
 
     private struct Line: Identifiable {
         let id: Int
@@ -420,7 +433,7 @@ private struct TranscriptBody: View {
         var isFirstSpeaker = false
     }
 
-    private var lines: [Line] {
+    private static func parse(_ text: String) -> [Line] {
         var firstSpeaker: String?
         return text.components(separatedBy: .newlines)
             .enumerated()
@@ -447,7 +460,7 @@ private struct TranscriptBody: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        LazyVStack(alignment: .leading, spacing: 9) {
             ForEach(lines) { line in
                 HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(line.time)
